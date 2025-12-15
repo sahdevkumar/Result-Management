@@ -17,7 +17,7 @@ export interface Student {
   rollNumber: string;
   className: string;
   section: string;
-  contactEmail: string;
+  contactNumber: string;
   guardianName: string;
   status: StudentStatus;
   avatarUrl: string;

@@ -9,7 +9,7 @@ const mapStudent = (s: any): Student => ({
   rollNumber: s.roll_number,
   className: s.class_name,
   section: s.section,
-  contactEmail: s.contact_email,
+  contactNumber: s.contact_number, // Updated to correct column name
   guardianName: s.guardian_name,
   status: s.status as StudentStatus,
   avatarUrl: s.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.full_name)}&background=random`,
@@ -198,13 +198,13 @@ export const DataService = {
     }
   },
 
-  addStudent: async (student: Student): Promise<void> => {
+  addStudent: async (student: Omit<Student, 'id'>): Promise<void> => {
     const dbRecord = {
       full_name: student.fullName,
       roll_number: student.rollNumber,
       class_name: student.className,
       section: student.section,
-      contact_email: student.contactEmail,
+      contact_number: student.contactNumber, // Updated to correct column name
       guardian_name: student.guardianName,
       status: student.status,
       avatar_url: student.avatarUrl
