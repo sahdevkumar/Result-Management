@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
-import { generateStudentReportRemark, analyzeClassPerformance } from '../services/geminiService';
 import { Student, Exam, MarkRecord, Subject } from '../types';
-import { Wand2, Download, ChevronDown, Loader2, Printer } from 'lucide-react';
+import { Download, ChevronDown, Loader2, Printer } from 'lucide-react';
 
 export const Reports: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -13,10 +12,6 @@ export const Reports: React.FC = () => {
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   
   const [reportMarks, setReportMarks] = useState<MarkRecord[]>([]);
-  const [aiRemark, setAiRemark] = useState<string>('');
-  const [generating, setGenerating] = useState(false);
-  const [analyzingClass, setAnalyzingClass] = useState(false);
-  const [classAnalysis, setClassAnalysis] = useState<string>('');
 
   useEffect(() => {
     const init = async () => {
@@ -37,46 +32,12 @@ export const Reports: React.FC = () => {
   useEffect(() => {
     if (selectedStudentId && selectedExamId) {
       loadStudentMarks();
-      setAiRemark(''); // Reset remark on change
     }
   }, [selectedStudentId, selectedExamId]);
 
   const loadStudentMarks = async () => {
     const data = await DataService.getStudentMarks(selectedStudentId, selectedExamId);
     setReportMarks(data);
-  };
-
-  const handleGenerateRemark = async () => {
-    setGenerating(true);
-    try {
-      const student = students.find(s => s.id === selectedStudentId);
-      const exam = exams.find(e => e.id === selectedExamId);
-      if (student && exam) {
-        const remark = await generateStudentReportRemark(student, exam.name, reportMarks, subjects);
-        setAiRemark(remark);
-      }
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleClassAnalysis = async () => {
-    setAnalyzingClass(true);
-    try {
-        const exam = exams.find(e => e.id === selectedExamId);
-        if(exam) {
-            const analysis = await analyzeClassPerformance(
-                exam.name,
-                78, // mock avg
-                92, // mock pass rate
-                'Mathematics',
-                'Physics'
-            );
-            setClassAnalysis(analysis);
-        }
-    } finally {
-        setAnalyzingClass(false);
-    }
   };
 
   const handlePrint = () => {
@@ -116,6 +77,14 @@ export const Reports: React.FC = () => {
   const totalMax = Object.values(consolidatedMarks).reduce((acc, curr) => acc + curr.max, 0);
   const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
 
+  // Extract existing remarks
+  const existingRemarks = reportMarks
+    .filter(m => m.remarks && m.remarks.trim() !== '')
+    .map(m => {
+        const sub = subjects.find(s => s.id === m.subjectId);
+        return { subject: sub?.name || 'Subject', text: m.remarks };
+    });
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800 no-print">Result Processing & Reports</h1>
@@ -153,26 +122,6 @@ export const Reports: React.FC = () => {
                     </div>
                 </div>
              </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-5 rounded-xl text-white shadow-lg">
-             <div className="flex items-center gap-2 mb-2">
-                <Wand2 size={20} className="text-yellow-300" />
-                <h3 className="font-bold text-lg">AI Insights</h3>
-             </div>
-             <p className="text-indigo-100 text-sm mb-4">Generate overall class performance analysis for the selected exam.</p>
-             <button 
-                onClick={handleClassAnalysis}
-                disabled={analyzingClass}
-                className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2 rounded-lg text-sm font-medium transition-colors flex justify-center items-center gap-2"
-             >
-                {analyzingClass ? <Loader2 className="animate-spin" size={16} /> : 'Analyze Class Performance'}
-             </button>
-             {classAnalysis && (
-                <div className="mt-4 p-3 bg-black/20 rounded-lg text-xs leading-relaxed text-indigo-50 border border-white/10">
-                    <pre className="whitespace-pre-wrap font-sans">{classAnalysis}</pre>
-                </div>
-             )}
           </div>
         </div>
 
@@ -250,26 +199,24 @@ export const Reports: React.FC = () => {
                      </table>
                  </div>
 
-                 {/* AI Remarks Section */}
+                 {/* Remarks Section */}
                  <div className="bg-slate-50 rounded-xl p-6 border border-slate-200 relative group print:bg-white print:border-slate-300">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
                         <h4 className="font-bold text-slate-800 flex items-center gap-2">
                            Teacher's Remarks
-                           {generating && <Loader2 className="animate-spin text-blue-500 no-print" size={16} />}
                         </h4>
-                        <button 
-                            onClick={handleGenerateRemark}
-                            className="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1.5 rounded-full flex items-center gap-1 hover:bg-blue-50 transition-colors shadow-sm w-full sm:w-auto justify-center no-print"
-                        >
-                            <Wand2 size={12} />
-                            Generate with AI
-                        </button>
                     </div>
                     
-                    {aiRemark ? (
-                        <p className="text-slate-600 italic leading-relaxed">"{aiRemark}"</p>
+                    {existingRemarks.length > 0 ? (
+                        <div className="space-y-2">
+                            {existingRemarks.map((rem, idx) => (
+                                <p key={idx} className="text-slate-600 text-sm italic">
+                                    <span className="font-semibold not-italic text-slate-700">{rem.subject}:</span> "{rem.text}"
+                                </p>
+                            ))}
+                        </div>
                     ) : (
-                        <p className="text-slate-400 text-sm italic">Click 'Generate with AI' to create a personalized remark based on the student's performance.</p>
+                        <p className="text-slate-400 text-sm italic">No remarks recorded for this exam.</p>
                     )}
                  </div>
                  
