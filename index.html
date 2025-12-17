@@ -22,14 +22,16 @@
         }
 
         /* Essential resets for full page printing */
-        html, body, #root, main {
+        html, body, #root, main, .print-reset {
             background-color: white !important;
             height: auto !important;
+            min-height: 0 !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: visible !important;
             display: block !important;
+            position: static !important;
         }
 
         /* Specific fix for the main content area margin set in App.tsx */
@@ -44,9 +46,18 @@
             box-shadow: none !important; /* Remove screen shadows for crisp print */
         }
         
-        /* Allow print-specific visibility */
-        .print-only {
-            display: block !important;
+        /* Force override inline styles for printing */
+        .print-force-full {
+            max-width: none !important;
+            width: 100% !important;
+            min-height: 0 !important;
+            height: auto !important;
+            margin: 0 !important;
+        }
+
+        /* Hide scrollbars */
+        ::-webkit-scrollbar {
+            display: none;
         }
       }
     </style>
@@ -61,7 +72,9 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.561.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "html2canvas": "https://esm.sh/html2canvas@1.4.1",
+    "jspdf": "https://esm.sh/jspdf@2.5.1"
   }
 }
 </script>

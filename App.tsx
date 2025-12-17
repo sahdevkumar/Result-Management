@@ -46,11 +46,12 @@ const Layout: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-slate-50/50 font-sans print:bg-white">
+    // Added print-reset to break out of flexbox layout during print
+    <div className="flex min-h-screen bg-slate-50/50 font-sans print:bg-white print-reset">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} isOnline={isOnline} />
       
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 z-40 flex items-center justify-between px-4 shadow-sm print:hidden">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 z-40 flex items-center justify-between px-4 shadow-sm no-print">
          <div className="flex items-center gap-3">
              <button 
                 onClick={() => setIsSidebarOpen(true)} 
@@ -76,9 +77,9 @@ const Layout: React.FC = () => {
         "lg:ml-72", // Matches new sidebar width
         "pt-20 lg:pt-8", // Mobile top padding
         // Print Overrides: Reset positioning, sizing, and scrolling
-        "print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:static"
+        "print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:static print-reset"
       )}>
-        <div className="max-w-7xl mx-auto print:max-w-none print:w-full">
+        <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0">
             <Outlet />
         </div>
       </main>
