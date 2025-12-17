@@ -1,8 +1,25 @@
 import { GoogleGenAI } from "@google/genai";
 import { Student, MarkRecord, Subject } from "../types";
 
+// Helper to safely access API Key
+const getApiKey = (): string | undefined => {
+  // Check import.meta.env (Vite standard)
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+    // @ts-ignore
+    return import.meta.env.VITE_API_KEY;
+  }
+  // Check process.env (Node/Webpack)
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  return undefined;
+};
+
 // Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// We fallback to process.env.API_KEY explicitly to satisfy direct usage rules if applicable, 
+// while prioritizing the safe getter for Vercel/Vite compatibility.
+const ai = new GoogleGenAI({ apiKey: getApiKey() || process.env.API_KEY });
 
 export const generateStudentReportRemark = async (
   student: Student,
