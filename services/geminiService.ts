@@ -9,17 +9,19 @@ const getApiKey = (): string | undefined => {
     // @ts-ignore
     return import.meta.env.VITE_API_KEY;
   }
-  // Check process.env (Node/Webpack)
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY;
+  // Check process.env (Node/Webpack/CRA)
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY; // CRA Standard
+    if (process.env.API_KEY) return process.env.API_KEY; // Fallback
   }
   return undefined;
 };
 
 // Initialize Gemini Client
 // We fallback to process.env.API_KEY explicitly to satisfy direct usage rules if applicable, 
-// while prioritizing the safe getter for Vercel/Vite compatibility.
-const ai = new GoogleGenAI({ apiKey: getApiKey() || process.env.API_KEY });
+// while prioritizing the safe getter for Vercel/Vite/CRA compatibility.
+const apiKey = getApiKey() || process.env.API_KEY;
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 export const generateStudentReportRemark = async (
   student: Student,
