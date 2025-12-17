@@ -227,7 +227,7 @@ const ScoreCardTemplate: React.FC<{
                                             >
                                                 {sub.name}
                                             </td>
-                                            <td className="border-r border-slate-400 text-[9px] text-slate-500 font-bold uppercase tracking-wider text-center py-1 bg-slate-50">TH</td>
+                                            <td className="border-r border-slate-400 text-[9px] text-slate-500 font-bold uppercase tracking-wider text-center py-1 bg-slate-50">SUB</td>
                                             {exams.map(exam => (
                                                 <React.Fragment key={exam.id}>
                                                     <td className="border-r border-slate-300 text-slate-400 py-1 bg-white">{helpers.getSubMax(sub.id)}</td>
@@ -251,7 +251,7 @@ const ScoreCardTemplate: React.FC<{
                                         </tr>
                                         {/* Objective Row */}
                                         <tr className="border-b border-slate-400">
-                                            <td className="border-r border-slate-400 text-[9px] text-slate-500 font-bold uppercase tracking-wider text-center py-1 bg-slate-50">PR</td>
+                                            <td className="border-r border-slate-400 text-[9px] text-slate-500 font-bold uppercase tracking-wider text-center py-1 bg-slate-50">OBJ</td>
                                             {exams.map(exam => (
                                                 <React.Fragment key={exam.id}>
                                                      <td className="border-r border-slate-300 text-slate-400 py-1 bg-white">{helpers.getSubMax(sub.id)}</td>
