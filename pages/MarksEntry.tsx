@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
 import { Exam, Subject, Student, MarkRecord, SchoolClass, AssessmentType } from '../types';
-import { Save, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, ChevronRight, Info } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import clsx from 'clsx';
 
 export const MarksEntry: React.FC = () => {
-  // Selection State (Flow: Exam > Type > Class > Subject)
+  // Selection State (Flow: Exam > Class > Subject)
   const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [selectedType, setSelectedType] = useState<AssessmentType>('Objective');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   
@@ -17,7 +16,9 @@ export const MarksEntry: React.FC = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [marksData, setMarksData] = useState<Record<string, MarkRecord>>({});
+  
+  // Map: studentId -> { Objective: MarkRecord, Subjective: MarkRecord }
+  const [marksData, setMarksData] = useState<Record<string, { Objective: MarkRecord, Subjective: MarkRecord }>>({});
   
   // UI State
   const [loading, setLoading] = useState(false);
@@ -53,17 +54,38 @@ export const MarksEntry: React.FC = () => {
     if (selectedExamId && selectedSubjectId) {
       loadMarks();
     }
-  }, [selectedExamId, selectedSubjectId, selectedType]);
+  }, [selectedExamId, selectedSubjectId]);
+
+  const createEmptyRecord = (studentId: string, type: AssessmentType): MarkRecord => ({
+      studentId,
+      examId: selectedExamId,
+      subjectId: selectedSubjectId,
+      assessmentType: type,
+      obtainedMarks: 0,
+      grade: 'F',
+      attended: true
+  });
 
   const loadMarks = async () => {
     setLoading(true);
     try {
-      // Pass the selectedType to filter marks
-      const records = await DataService.getMarks(selectedExamId, selectedSubjectId, selectedType);
-      const marksMap: Record<string, MarkRecord> = {};
+      // Fetch all marks for this exam & subject (both Objective and Subjective)
+      const records = await DataService.getMarks(selectedExamId, selectedSubjectId);
+      
+      const marksMap: Record<string, { Objective: MarkRecord, Subjective: MarkRecord }> = {};
+      
+      // Populate map with existing records
       records.forEach(r => {
-        marksMap[r.studentId] = r;
+        if (!marksMap[r.studentId]) {
+            marksMap[r.studentId] = {
+                Objective: createEmptyRecord(r.studentId, 'Objective'),
+                Subjective: createEmptyRecord(r.studentId, 'Subjective')
+            };
+        }
+        if (r.assessmentType === 'Objective') marksMap[r.studentId].Objective = r;
+        if (r.assessmentType === 'Subjective') marksMap[r.studentId].Subjective = r;
       });
+
       setMarksData(marksMap);
     } catch(e) {
       showToast("Error loading marks", 'error');
@@ -84,43 +106,52 @@ export const MarksEntry: React.FC = () => {
     return 'F';
   };
 
-  const handleMarkChange = (studentId: string, value: string) => {
-    const numValue = value === '' ? 0 : parseInt(value, 10);
-    const currentSubject = subjects.find(s => s.id === selectedSubjectId);
-    const maxMarks = currentSubject?.maxMarks || 100;
+  const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+  const currentClass = classes.find(c => c.id === selectedClassId);
 
-    const currentMark = marksData[studentId] || {
-      studentId,
-      examId: selectedExamId,
-      subjectId: selectedSubjectId,
-      assessmentType: selectedType,
-      obtainedMarks: 0,
-      grade: 'F',
-      attended: true
-    };
+  // Max marks logic
+  const subjectTotalMax = currentSubject?.maxMarks || 100;
+  const componentMaxMarks = Math.round(subjectTotalMax / 2);
 
-    const marks = isNaN(numValue) ? 0 : numValue;
+  const handleMarkChange = (studentId: string, type: AssessmentType, value: string) => {
+    const numValue = value === '' ? 0 : parseFloat(value);
     
-    // Note: We are validating against total max marks, but this is a component
-    // In a real scenario, objective max + subjective max = subject max
-    
-    const updatedMark = {
-      ...currentMark,
-      assessmentType: selectedType, // Ensure type is set
-      obtainedMarks: marks,
-      grade: calculateGrade(marks, maxMarks)
-    };
-    
-    setMarksData(prev => ({
-      ...prev,
-      [studentId]: updatedMark
-    }));
+    setMarksData(prev => {
+        const studentRecords = prev[studentId] || {
+            Objective: createEmptyRecord(studentId, 'Objective'),
+            Subjective: createEmptyRecord(studentId, 'Subjective')
+        };
+        
+        const currentMark = studentRecords[type];
+        
+        const updatedMark = {
+            ...currentMark,
+            examId: selectedExamId, 
+            subjectId: selectedSubjectId,
+            obtainedMarks: isNaN(numValue) ? 0 : numValue,
+            grade: calculateGrade(isNaN(numValue) ? 0 : numValue, componentMaxMarks)
+        };
+
+        return {
+            ...prev,
+            [studentId]: {
+                ...studentRecords,
+                [type]: updatedMark
+            }
+        };
+    });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-        const promises = (Object.values(marksData) as MarkRecord[]).map(record => DataService.updateMark(record));
+        const allRecords: MarkRecord[] = [];
+        Object.values(marksData).forEach(pair => {
+            allRecords.push(pair.Objective);
+            allRecords.push(pair.Subjective);
+        });
+        
+        const promises = allRecords.map(record => DataService.updateMark(record));
         await Promise.all(promises);
         showToast("Marks saved successfully!", 'success');
     } catch(e) {
@@ -129,9 +160,6 @@ export const MarksEntry: React.FC = () => {
         setSaving(false);
     }
   };
-
-  const currentSubject = subjects.find(s => s.id === selectedSubjectId);
-  const currentClass = classes.find(c => c.id === selectedClassId);
 
   // Filter students based on selected class
   const filteredStudents = students.filter(student => {
@@ -153,9 +181,9 @@ export const MarksEntry: React.FC = () => {
         </button>
       </div>
 
-      {/* Selectors with specific flow: Exam > Type > Class > Subject */}
+      {/* Selectors */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
             
             {/* 1. Exam */}
             <div className="relative group">
@@ -169,32 +197,9 @@ export const MarksEntry: React.FC = () => {
               </select>
             </div>
 
-            {/* Arrow */}
-            <div className="hidden md:flex justify-center text-slate-300">
-                <ChevronRight size={20} />
-            </div>
-
-            {/* 2. Type */}
+            {/* 2. Class */}
             <div className="relative group">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">2. Select Type</label>
-              <select 
-                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value as AssessmentType)}
-              >
-                <option value="Objective">1 - Objective</option>
-                <option value="Subjective">2 - Subjective</option>
-              </select>
-            </div>
-
-             {/* Arrow */}
-             <div className="hidden md:flex justify-center text-slate-300">
-                <ChevronRight size={20} />
-            </div>
-
-            {/* 3. Class */}
-            <div className="relative group">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">3. Select Class</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">2. Select Class</label>
               <select 
                 className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
                 value={selectedClassId}
@@ -205,14 +210,9 @@ export const MarksEntry: React.FC = () => {
               </select>
             </div>
 
-            {/* Arrow */}
-            <div className="hidden md:flex justify-center text-slate-300">
-                <ChevronRight size={20} />
-            </div>
-
-            {/* 4. Subject */}
+            {/* 3. Subject */}
              <div className="relative group">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">4. Select Subject</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">3. Select Subject</label>
               <select 
                 className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
                 value={selectedSubjectId}
@@ -226,35 +226,53 @@ export const MarksEntry: React.FC = () => {
 
       {/* Grid */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-         <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+         <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
              <h3 className="font-bold text-slate-700">
-                 Entering <span className="text-indigo-600">{selectedType}</span> Marks for <span className="text-indigo-600">{currentSubject?.name}</span>
+                 Marks for <span className="text-indigo-600">{currentSubject?.name}</span>
              </h3>
-             <span className="text-xs text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">
-                 Max Subject Total: {currentSubject?.maxMarks}
-             </span>
+             <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-full text-slate-600">
+                    <Info size={14} />
+                    <span>Subject Total: <strong>{subjectTotalMax}</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-indigo-50 px-3 py-1.5 rounded-full text-indigo-700 border border-indigo-100">
+                    <CheckCircle size={14} />
+                    <span>Component Max: <strong>{componentMaxMarks}</strong></span>
+                </div>
+             </div>
          </div>
          <div className="overflow-x-auto">
             <table className="w-full text-left">
                 <thead>
                     <tr className="bg-white text-slate-600 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
                         <th className="px-6 py-4 w-64">Student</th>
-                        <th className="px-4 py-4 w-48">Obtained Marks</th>
-                        <th className="px-4 py-4 w-32">Calculated Grade</th>
+                        <th className="px-4 py-4 w-32">Objective</th>
+                        <th className="px-4 py-4 w-32">Subjective</th>
+                        <th className="px-4 py-4 w-24">Total</th>
+                        <th className="px-4 py-4 w-24">Grade</th>
                         <th className="px-4 py-4">Status</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
-                         <tr><td colSpan={4} className="p-8 text-center text-slate-500">Loading student list...</td></tr>
+                         <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading student list...</td></tr>
                     ) : filteredStudents.length === 0 ? (
-                         <tr><td colSpan={4} className="p-8 text-center text-slate-500">No students found for selection.</td></tr>
+                         <tr><td colSpan={6} className="p-8 text-center text-slate-500">No students found for selection.</td></tr>
                     ) : (
                         filteredStudents.map(student => {
-                            const mark = marksData[student.id] || { obtainedMarks: 0, grade: 'F' };
-                            const maxMarks = currentSubject?.maxMarks || 100;
-                            // Basic pass logic - assumes passMarks apply to the total, but we check component for visual feedback
-                            const isFail = mark.obtainedMarks < ((currentSubject?.passMarks || 40) * 0.3); // Rough estimate for component pass
+                            // Ensure records exist for rendering even if not yet in state
+                            const studentRecords = marksData[student.id] || { 
+                                Objective: createEmptyRecord(student.id, 'Objective'), 
+                                Subjective: createEmptyRecord(student.id, 'Subjective') 
+                            };
+                            
+                            const objMark = studentRecords.Objective.obtainedMarks || 0;
+                            const subjMark = studentRecords.Subjective.obtainedMarks || 0;
+                            const total = objMark + subjMark;
+                            const totalGrade = calculateGrade(total, subjectTotalMax);
+
+                            const isObjOver = objMark > componentMaxMarks;
+                            const isSubjOver = subjMark > componentMaxMarks;
 
                             return (
                                 <tr key={student.id} className="hover:bg-slate-50 transition-colors">
@@ -270,27 +288,78 @@ export const MarksEntry: React.FC = () => {
                                             </div>
                                         </div>
                                     </td>
+                                    
+                                    {/* Objective Input */}
                                     <td className="px-4 py-3">
-                                        <input 
-                                            type="number" 
-                                            className={clsx(
-                                                "w-full p-2 border rounded-md text-sm transition-all focus:ring-2 focus:outline-none",
-                                                mark.obtainedMarks > maxMarks ? "border-red-500 bg-red-50 focus:ring-red-200" : "border-slate-300 focus:ring-indigo-500"
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                max={componentMaxMarks}
+                                                className={clsx(
+                                                    "w-full p-2 border rounded-md text-sm transition-all focus:ring-2 focus:outline-none",
+                                                    isObjOver ? "border-red-500 bg-red-50 focus:ring-red-200 text-red-700" : "border-slate-300 focus:ring-indigo-500"
+                                                )}
+                                                value={studentRecords.Objective.obtainedMarks || ''}
+                                                onChange={(e) => handleMarkChange(student.id, 'Objective', e.target.value)}
+                                                placeholder="0"
+                                            />
+                                            {isObjOver && (
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 pointer-events-none">
+                                                    <AlertCircle size={16} />
+                                                </div>
                                             )}
-                                            value={mark.obtainedMarks || ''}
-                                            onChange={(e) => handleMarkChange(student.id, e.target.value)}
-                                            placeholder="0"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="font-bold text-slate-700">
-                                            {mark.grade || '-'}
                                         </div>
                                     </td>
+
+                                    {/* Subjective Input */}
                                     <td className="px-4 py-3">
-                                       {/* Status is less relevant for individual component, but good for visual feedback */}
-                                        {mark.obtainedMarks > 0 && (
-                                            <span className="text-xs text-slate-400">Recorded</span>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                max={componentMaxMarks}
+                                                className={clsx(
+                                                    "w-full p-2 border rounded-md text-sm transition-all focus:ring-2 focus:outline-none",
+                                                    isSubjOver ? "border-red-500 bg-red-50 focus:ring-red-200 text-red-700" : "border-slate-300 focus:ring-indigo-500"
+                                                )}
+                                                value={studentRecords.Subjective.obtainedMarks || ''}
+                                                onChange={(e) => handleMarkChange(student.id, 'Subjective', e.target.value)}
+                                                placeholder="0"
+                                            />
+                                            {isSubjOver && (
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 pointer-events-none">
+                                                    <AlertCircle size={16} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    {/* Total Calculation */}
+                                    <td className="px-4 py-3">
+                                        <div className="font-bold text-slate-700 text-sm">{total}</div>
+                                    </td>
+
+                                    {/* Grade Calculation */}
+                                    <td className="px-4 py-3">
+                                        <div className={clsx(
+                                            "font-bold text-xs inline-block px-2 py-0.5 rounded",
+                                            totalGrade === 'F' ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                                        )}>
+                                            {totalGrade}
+                                        </div>
+                                    </td>
+
+                                    <td className="px-4 py-3">
+                                        {total > 0 && !isObjOver && !isSubjOver && (
+                                            <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                                <CheckCircle size={12} /> Ready
+                                            </span>
+                                        )}
+                                        {(isObjOver || isSubjOver) && (
+                                             <span className="text-xs text-red-600 font-medium flex items-center gap-1">
+                                                <AlertCircle size={12} /> Invalid
+                                            </span>
                                         )}
                                     </td>
                                 </tr>

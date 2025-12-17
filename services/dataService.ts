@@ -154,6 +154,17 @@ export const DataService = {
     if (error) throw error;
   },
 
+  updateSubject: async (subject: Subject): Promise<void> => {
+    const dbRecord = {
+      name: subject.name,
+      code: subject.code,
+      max_marks: subject.maxMarks,
+      pass_marks: subject.passMarks
+    };
+    const { error } = await supabase.from('subjects').update(dbRecord).eq('id', subject.id);
+    if (error) throw error;
+  },
+
   deleteSubject: async (id: string): Promise<void> => {
     const { error: marksError } = await supabase.from('marks').delete().eq('subject_id', id);
     if (marksError) throw new Error(`Failed to delete subject marks: ${marksError.message}`);
@@ -173,6 +184,12 @@ export const DataService = {
     if (error) throw error;
   },
 
+  updateClass: async (cls: SchoolClass): Promise<void> => {
+    const dbRecord = { name: cls.className, section: cls.section };
+    const { error } = await supabase.from('classes').update(dbRecord).eq('id', cls.id);
+    if (error) throw error;
+  },
+
   deleteClass: async (id: string): Promise<void> => {
     const { error } = await supabase.from('classes').delete().eq('id', id);
     if (error) throw error;
@@ -186,6 +203,11 @@ export const DataService = {
 
   addExamType: async (type: Partial<ExamType>): Promise<void> => {
     const { error } = await supabase.from('exam_types').insert({ name: type.name, description: type.description });
+    if (error) throw error;
+  },
+
+  updateExamType: async (type: ExamType): Promise<void> => {
+    const { error } = await supabase.from('exam_types').update({ name: type.name, description: type.description }).eq('id', type.id);
     if (error) throw error;
   },
 

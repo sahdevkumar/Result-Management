@@ -31,12 +31,13 @@ const useScoreCalculations = (exams: Exam[], subjects: Subject[]) => {
 
     const getSubMax = (subjectId: string) => {
         const sub = subjects.find(s => s.id === subjectId);
-        return sub ? Math.round(sub.maxMarks / 2) : 50;
+        // Strictly fetch from DB. If sub not found, return 0 to indicate error rather than a static default.
+        return sub ? (sub.maxMarks / 2) : 0;
     };
 
     const calculateSubjectStats = (marks: MarkRecord[], subjectId: string) => {
         const sub = subjects.find(s => s.id === subjectId);
-        if (!sub) return { percentage: '0.0', grade: '-' };
+        if (!sub) return { obtained: 0, max: 0, percentage: '0.0', grade: '-' };
 
         let totalObtained = 0;
         let totalMax = 0;
@@ -45,6 +46,8 @@ const useScoreCalculations = (exams: Exam[], subjects: Subject[]) => {
             const subjMark = marks.find(m => m.examId === exam.id && m.subjectId === subjectId && m.assessmentType === 'Subjective');
             const objMark = marks.find(m => m.examId === exam.id && m.subjectId === subjectId && m.assessmentType === 'Objective');
 
+            // If we have marks or if the exam exists, we count it towards max
+            // NOTE: This logic assumes every exam evaluates every subject fully (Obj + Subj)
             if (subjMark && subjMark.attended) totalObtained += subjMark.obtainedMarks;
             if (objMark && objMark.attended) totalObtained += objMark.obtainedMarks;
 
@@ -61,26 +64,24 @@ const useScoreCalculations = (exams: Exam[], subjects: Subject[]) => {
         else if (percentage >= 50) grade = 'D';
         else if (percentage >= 40) grade = 'E';
 
-        return { percentage: percentage.toFixed(1), grade };
+        return { obtained: totalObtained, max: totalMax, percentage: percentage.toFixed(1), grade };
     };
 
     const calculateOverall = (marks: MarkRecord[]) => {
         if (subjects.length === 0) return { totalPct: '0.0', overallGrade: 'N/A' };
         
-        let totalPctSum = 0;
-        let validSubjects = 0;
+        let grandTotalObtained = 0;
+        let grandTotalMax = 0;
         
         subjects.forEach(s => {
            const stats = calculateSubjectStats(marks, s.id);
-           if (stats.grade !== '-') {
-             totalPctSum += parseFloat(stats.percentage);
-             validSubjects++;
-           }
+           grandTotalObtained += stats.obtained;
+           grandTotalMax += stats.max;
         });
         
-        if (validSubjects === 0) return { totalPct: '0.0', overallGrade: 'N/A' };
+        if (grandTotalMax === 0) return { totalPct: '0.0', overallGrade: 'N/A' };
 
-        const avgPct = totalPctSum / validSubjects;
+        const avgPct = (grandTotalObtained / grandTotalMax) * 100;
         let grade = 'F';
         if (avgPct >= 90) grade = 'A+';
         else if (avgPct >= 80) grade = 'A';
@@ -111,9 +112,9 @@ const ScoreCardTemplate: React.FC<{
     const CONTENT_WIDTH = PAGE_WIDTH - (PADDING_X * 2); 
     
     // Column Widths
-    const WIDTH_SUBJECT = 200;
-    const WIDTH_TYPE = 50;
-    const WIDTH_RESULT = 100;
+    const WIDTH_SUBJECT = 180;
+    const WIDTH_TYPE = 40;
+    const WIDTH_RESULT = 140; // Increased for Total column
     
     // Remaining width for exams
     const widthForExams = CONTENT_WIDTH - WIDTH_SUBJECT - WIDTH_TYPE - WIDTH_RESULT;
@@ -200,7 +201,7 @@ const ScoreCardTemplate: React.FC<{
                                             {exam.name}
                                         </th>
                                     ))}
-                                    <th style={{width: `${WIDTH_RESULT}px`}} colSpan={2} className="py-2 border-slate-400 text-[10px] font-bold uppercase tracking-wider bg-slate-200">Overall</th>
+                                    <th style={{width: `${WIDTH_RESULT}px`}} colSpan={3} className="py-2 border-slate-400 text-[10px] font-bold uppercase tracking-wider bg-slate-200">Overall</th>
                                 </tr>
                                 <tr className="bg-slate-50 text-slate-600 text-[9px] uppercase font-bold border-b border-slate-400">
                                     {exams.map(exam => (
@@ -209,8 +210,9 @@ const ScoreCardTemplate: React.FC<{
                                             <th style={{width: `${subColWidth}px`}} className="py-1 border-r border-slate-400">Obt</th>
                                         </React.Fragment>
                                     ))}
-                                    <th className="py-1 border-r border-slate-400 w-1/2 bg-slate-100">%</th>
-                                    <th className="py-1 w-1/2 bg-slate-100">Grd</th>
+                                    <th className="py-1 border-r border-slate-400 w-1/3 bg-slate-100">Total</th>
+                                    <th className="py-1 border-r border-slate-400 w-1/3 bg-slate-100">%</th>
+                                    <th className="py-1 w-1/3 bg-slate-100">Grd</th>
                                 </tr>
                             </thead>
                             <tbody className="text-xs">
@@ -236,6 +238,12 @@ const ScoreCardTemplate: React.FC<{
                                             ))}
                                             
                                             {/* Final Stats */}
+                                            <td 
+                                                rowSpan={2} 
+                                                className="border-r border-slate-400 font-bold text-slate-800 align-middle bg-slate-50"
+                                            >
+                                                {stats.obtained} / {stats.max}
+                                            </td>
                                             <td 
                                                 rowSpan={2} 
                                                 className="border-r border-slate-400 font-bold text-indigo-800 align-middle bg-slate-50"
