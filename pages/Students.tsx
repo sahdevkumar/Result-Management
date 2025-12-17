@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
 import { Student, StudentStatus, SchoolClass } from '../types';
-import { Search, Plus, Filter, MoreHorizontal, X, RefreshCw } from 'lucide-react';
+import { Search, Plus, Filter, Trash2, X, RefreshCw, Pencil, Loader2, AlertTriangle } from 'lucide-react';
+import { useToast } from '../components/ToastContext';
 import clsx from 'clsx';
 
 export const Students: React.FC = () => {
@@ -9,18 +10,27 @@ export const Students: React.FC = () => {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilter, setShowFilter] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('All');
   
-  // Modal State
+  // Modal State for Add/Edit
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
-    rollNumber: '',
     classId: '',
     contactNumber: '',
     guardianName: '',
     status: StudentStatus.Active
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal State for Delete Confirmation
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<{id: string, name: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadData();
@@ -37,36 +47,61 @@ export const Students: React.FC = () => {
       setClasses(cData);
     } catch (err) {
       console.error(err);
+      showToast("Failed to load student data", 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateNextRollNumber = (currentStudents: Student[]) => {
-    const prefix = "ACS";
-    const existingNumbers = currentStudents
-        .map(s => s.rollNumber)
-        .filter(r => r.startsWith(prefix))
-        .map(r => parseInt(r.replace(prefix, ''), 10))
-        .filter(n => !isNaN(n));
-    
-    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-    const nextNumber = maxNumber + 1;
-    // Format: ACS001, ACS002...
-    return `${prefix}${String(nextNumber).padStart(3, '0')}`;
-  };
-
   const handleAddNew = () => {
-      const nextRoll = generateNextRollNumber(students);
       setFormData({
         fullName: '',
-        rollNumber: nextRoll,
         classId: classes[0]?.id || '',
         contactNumber: '',
         guardianName: '',
         status: StudentStatus.Active
       });
+      setEditingId(null);
       setShowModal(true);
+  };
+
+  const handleEdit = (student: Student) => {
+      const cls = classes.find(c => c.className === student.className && c.section === student.section);
+      setFormData({
+        fullName: student.fullName,
+        classId: cls ? cls.id : '',
+        contactNumber: student.contactNumber,
+        guardianName: student.guardianName,
+        status: student.status
+      });
+      setEditingId(student.id);
+      setShowModal(true);
+  };
+
+  const handleDeleteClick = (student: Student) => {
+      setStudentToDelete({ id: student.id, name: student.fullName });
+      setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+      if (!studentToDelete) return;
+      
+      setIsDeleting(true);
+      try {
+          await DataService.deleteStudent(studentToDelete.id);
+          showToast("Student deleted successfully", 'success');
+          // Optimistic update
+          setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+      } catch(e: any) {
+          console.error(e);
+          showToast(e.message || "Failed to delete student", 'error');
+          // Revert or reload if failed
+          await loadData();
+      } finally {
+          setIsDeleting(false);
+          setShowDeleteModal(false);
+          setStudentToDelete(null);
+      }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -80,9 +115,8 @@ export const Students: React.FC = () => {
     try {
       const selectedClass = classes.find(c => c.id === formData.classId);
       
-      const newStudent: Omit<Student, 'id'> = {
+      const commonData = {
         fullName: formData.fullName,
-        rollNumber: formData.rollNumber,
         className: selectedClass?.className || '',
         section: selectedClass?.section || '',
         contactNumber: formData.contactNumber,
@@ -91,23 +125,39 @@ export const Students: React.FC = () => {
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.fullName)}&background=random`
       };
 
-      await DataService.addStudent(newStudent);
+      if (editingId) {
+          // Edit mode
+          const currentStudent = students.find(s => s.id === editingId);
+          if (currentStudent) {
+              await DataService.updateStudent({
+                  id: editingId,
+                  rollNumber: currentStudent.rollNumber,
+                  ...commonData
+              });
+              showToast("Student updated successfully", 'success');
+          }
+      } else {
+          // Add mode
+          await DataService.addStudent(commonData);
+          showToast("Student added successfully", 'success');
+      }
       
-      // Reload to get the new list, which is needed for the next auto-gen number
       await loadData(); 
       setShowModal(false);
       
     } catch (err) {
-      alert("Failed to add student. Please try again.");
+      showToast(editingId ? "Failed to update student." : "Failed to add student.", 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const filteredStudents = students.filter(s => 
-    s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -139,12 +189,36 @@ export const Students: React.FC = () => {
             />
           </div>
           <div className="flex gap-2">
-             <button className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 text-sm hover:bg-slate-50">
+             <button 
+                onClick={() => setShowFilter(!showFilter)}
+                className={clsx(
+                    "flex items-center gap-2 px-3 py-2 border rounded-lg text-sm hover:bg-slate-50",
+                    showFilter ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-300 text-slate-600"
+                )}
+             >
                 <Filter size={16} />
                 <span>Filter</span>
              </button>
           </div>
         </div>
+
+        {/* Extended Filter Panel */}
+        {showFilter && (
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex gap-4">
+                <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
+                    <select 
+                        className="text-sm border border-slate-300 rounded p-1"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="All">All Status</option>
+                        <option value={StudentStatus.Active}>Active</option>
+                        <option value={StudentStatus.Inactive}>Inactive</option>
+                    </select>
+                </div>
+            </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -196,9 +270,22 @@ export const Students: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <button className="text-slate-400 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors">
-                        <MoreHorizontal size={18} />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => handleEdit(student)}
+                            title="Edit Student"
+                            className="text-slate-400 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteClick(student)}
+                            title="Delete Student"
+                            className="text-slate-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -208,12 +295,12 @@ export const Students: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Student Modal */}
+      {/* Add/Edit Student Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-lg text-slate-800">Add New Student</h3>
+              <h3 className="font-bold text-lg text-slate-800">{editingId ? 'Edit Student' : 'Add New Student'}</h3>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={24} />
               </button>
@@ -233,23 +320,8 @@ export const Students: React.FC = () => {
                       onChange={handleInputChange}
                     />
                  </div>
-                 
-                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Roll Number</label>
-                    <div className="relative">
-                        <input 
-                        type="text" 
-                        name="rollNumber"
-                        readOnly
-                        className="w-full p-2.5 border border-slate-300 bg-slate-100 text-slate-500 rounded-lg focus:outline-none cursor-not-allowed font-mono"
-                        value={formData.rollNumber}
-                        />
-                        <RefreshCw size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Auto-generated (ACS Series)</p>
-                 </div>
 
-                 <div>
+                 <div className="col-span-2">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Class</label>
                     <select 
                       name="classId"
@@ -288,6 +360,20 @@ export const Students: React.FC = () => {
                       onChange={handleInputChange}
                     />
                  </div>
+
+                 <div className="col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select 
+                        name="status"
+                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                        value={formData.status}
+                        onChange={handleInputChange}
+                    >
+                        <option value={StudentStatus.Active}>Active</option>
+                        <option value={StudentStatus.Inactive}>Inactive</option>
+                        <option value={StudentStatus.Suspended}>Suspended</option>
+                    </select>
+                 </div>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex gap-3">
@@ -303,11 +389,45 @@ export const Students: React.FC = () => {
                   disabled={isSubmitting}
                   className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Adding...' : 'Add Student'}
+                  {isSubmitting ? 'Saving...' : (editingId ? 'Update Student' : 'Add Student')}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && studentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-6 text-center">
+                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertTriangle className="text-red-600" size={24} />
+                 </div>
+                 <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Student?</h3>
+                 <p className="text-slate-500 text-sm mb-6">
+                    Are you sure you want to delete <strong>{studentToDelete.name}</strong>? This action cannot be undone and will delete all associated marks.
+                 </p>
+                 <div className="flex gap-3">
+                    <button 
+                       onClick={() => setShowDeleteModal(false)}
+                       disabled={isDeleting}
+                       className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                    >
+                       Cancel
+                    </button>
+                    <button 
+                       onClick={confirmDelete}
+                       disabled={isDeleting}
+                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                       {isDeleting && <Loader2 size={16} className="animate-spin" />}
+                       {isDeleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                 </div>
+              </div>
+           </div>
         </div>
       )}
     </div>

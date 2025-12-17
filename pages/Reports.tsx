@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
 import { generateStudentReportRemark, analyzeClassPerformance } from '../services/geminiService';
 import { Student, Exam, MarkRecord, Subject } from '../types';
-import { Wand2, Download, ChevronDown, Loader2 } from 'lucide-react';
+import { Wand2, Download, ChevronDown, Loader2, Printer } from 'lucide-react';
 
 export const Reports: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -63,7 +63,6 @@ export const Reports: React.FC = () => {
   const handleClassAnalysis = async () => {
     setAnalyzingClass(true);
     try {
-        // Mocking aggregated data for the API call
         const exam = exams.find(e => e.id === selectedExamId);
         if(exam) {
             const analysis = await analyzeClassPerformance(
@@ -80,18 +79,50 @@ export const Reports: React.FC = () => {
     }
   };
 
+  const handlePrint = () => {
+      window.print();
+  };
+
   const selectedStudent = students.find(s => s.id === selectedStudentId);
-  const totalMarks = reportMarks.reduce((acc, curr) => acc + curr.total, 0);
-  const maxTotal = reportMarks.length * 100; // Simplified
-  const percentage = maxTotal > 0 ? (totalMarks / maxTotal) * 100 : 0;
+  
+  // Consolidation Logic
+  const consolidatedMarks: Record<string, { obj: number, subj: number, total: number, max: number, grade: string }> = {};
+  
+  reportMarks.forEach(mark => {
+      if (!consolidatedMarks[mark.subjectId]) {
+          const sub = subjects.find(s => s.id === mark.subjectId);
+          consolidatedMarks[mark.subjectId] = { obj: 0, subj: 0, total: 0, max: sub?.maxMarks || 100, grade: '-' };
+      }
+      if (mark.assessmentType === 'Objective') consolidatedMarks[mark.subjectId].obj = mark.obtainedMarks;
+      if (mark.assessmentType === 'Subjective') consolidatedMarks[mark.subjectId].subj = mark.obtainedMarks;
+      
+      consolidatedMarks[mark.subjectId].total += mark.obtainedMarks;
+  });
+
+  // Calculate Grades on Total
+  Object.keys(consolidatedMarks).forEach(subId => {
+      const item = consolidatedMarks[subId];
+      const pct = (item.total / item.max) * 100;
+      if (pct >= 90) item.grade = 'A+';
+      else if (pct >= 80) item.grade = 'A';
+      else if (pct >= 70) item.grade = 'B';
+      else if (pct >= 60) item.grade = 'C';
+      else if (pct >= 50) item.grade = 'D';
+      else if (pct >= 40) item.grade = 'E';
+      else item.grade = 'F';
+  });
+
+  const totalObtained = Object.values(consolidatedMarks).reduce((acc, curr) => acc + curr.total, 0);
+  const totalMax = Object.values(consolidatedMarks).reduce((acc, curr) => acc + curr.max, 0);
+  const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Result Processing & Reports</h1>
+      <h1 className="text-2xl font-bold text-slate-800 no-print">Result Processing & Reports</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Controls */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-6 no-print">
           <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
              <h2 className="font-semibold text-slate-800 mb-4">Report Configuration</h2>
              <div className="space-y-4">
@@ -146,24 +177,24 @@ export const Reports: React.FC = () => {
         </div>
 
         {/* Report Card Preview */}
-        <div className="lg:col-span-2">
-           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-              <div className="bg-slate-800 p-6 text-white flex justify-between items-center">
+        <div className="lg:col-span-2 print-area">
+           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200 print:shadow-none print:border-none print:w-full">
+              <div className="bg-slate-800 p-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:bg-slate-800 print:text-white print-color-adjust-exact">
                  <div>
                     <h2 className="text-2xl font-serif font-bold">Progress Report</h2>
-                    <p className="text-slate-400 text-sm">{exams.find(e => e.id === selectedExamId)?.name}</p>
+                    <p className="text-slate-400 text-sm print:text-slate-300">{exams.find(e => e.id === selectedExamId)?.name}</p>
                  </div>
-                 <div className="text-right">
+                 <div className="text-left sm:text-right">
                     <p className="text-2xl font-bold text-green-400">{percentage.toFixed(1)}%</p>
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Overall Aggregate</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider print:text-slate-300">Overall Aggregate</p>
                  </div>
               </div>
               
-              <div className="p-8">
+              <div className="p-4 sm:p-8">
                  {/* Student Header */}
-                 <div className="flex items-start gap-6 mb-8 border-b border-slate-100 pb-6">
+                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8 border-b border-slate-100 pb-6 text-center sm:text-left print:flex-row print:text-left">
                     <img src={selectedStudent?.avatarUrl} className="w-20 h-20 rounded-lg object-cover border-2 border-slate-100 shadow-sm" alt="Student" />
-                    <div className="grid grid-cols-2 gap-x-12 gap-y-2 w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4 w-full">
                         <div>
                             <p className="text-xs text-slate-500 uppercase">Student Name</p>
                             <p className="font-bold text-slate-800">{selectedStudent?.fullName}</p>
@@ -184,44 +215,51 @@ export const Reports: React.FC = () => {
                  </div>
 
                  {/* Marks Table */}
-                 <table className="w-full mb-8">
-                    <thead>
-                        <tr className="border-b-2 border-slate-100">
-                            <th className="text-left py-3 text-sm font-bold text-slate-600">Subject</th>
-                            <th className="text-center py-3 text-sm font-bold text-slate-600">Marks Obtained</th>
-                            <th className="text-center py-3 text-sm font-bold text-slate-600">Max Marks</th>
-                            <th className="text-center py-3 text-sm font-bold text-slate-600">Grade</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {reportMarks.map((mark) => {
-                            const subject = subjects.find(s => s.id === mark.subjectId);
-                            return (
-                                <tr key={mark.subjectId}>
-                                    <td className="py-3 text-slate-700 font-medium">{subject?.name}</td>
-                                    <td className="py-3 text-center text-slate-700">{mark.total}</td>
-                                    <td className="py-3 text-center text-slate-500">{subject?.maxMarks}</td>
-                                    <td className="py-3 text-center">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${mark.grade === 'F' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
-                                            {mark.grade}
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                 </table>
+                 <div className="overflow-x-auto mb-8">
+                     <table className="w-full min-w-[300px]">
+                        <thead>
+                            <tr className="border-b-2 border-slate-100">
+                                <th className="text-left py-3 text-sm font-bold text-slate-600">Subject</th>
+                                <th className="text-center py-3 text-sm font-bold text-slate-600">Objective</th>
+                                <th className="text-center py-3 text-sm font-bold text-slate-600">Subjective</th>
+                                <th className="text-center py-3 text-sm font-bold text-slate-600">Total</th>
+                                <th className="text-center py-3 text-sm font-bold text-slate-600">Max</th>
+                                <th className="text-center py-3 text-sm font-bold text-slate-600">Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {Object.keys(consolidatedMarks).map((subId) => {
+                                const subject = subjects.find(s => s.id === subId);
+                                const data = consolidatedMarks[subId];
+                                return (
+                                    <tr key={subId}>
+                                        <td className="py-3 text-slate-700 font-medium">{subject?.name}</td>
+                                        <td className="py-3 text-center text-slate-500 text-sm">{data.obj || '-'}</td>
+                                        <td className="py-3 text-center text-slate-500 text-sm">{data.subj || '-'}</td>
+                                        <td className="py-3 text-center text-slate-800 font-bold">{data.total}</td>
+                                        <td className="py-3 text-center text-slate-500">{data.max}</td>
+                                        <td className="py-3 text-center">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${data.grade === 'F' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'} print-color-adjust-exact`}>
+                                                {data.grade}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                     </table>
+                 </div>
 
                  {/* AI Remarks Section */}
-                 <div className="bg-slate-50 rounded-xl p-6 border border-slate-200 relative group">
-                    <div className="flex justify-between items-center mb-3">
+                 <div className="bg-slate-50 rounded-xl p-6 border border-slate-200 relative group print:bg-white print:border-slate-300">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
                         <h4 className="font-bold text-slate-800 flex items-center gap-2">
                            Teacher's Remarks
-                           {generating && <Loader2 className="animate-spin text-blue-500" size={16} />}
+                           {generating && <Loader2 className="animate-spin text-blue-500 no-print" size={16} />}
                         </h4>
                         <button 
                             onClick={handleGenerateRemark}
-                            className="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1.5 rounded-full flex items-center gap-1 hover:bg-blue-50 transition-colors shadow-sm"
+                            className="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1.5 rounded-full flex items-center gap-1 hover:bg-blue-50 transition-colors shadow-sm w-full sm:w-auto justify-center no-print"
                         >
                             <Wand2 size={12} />
                             Generate with AI
@@ -235,10 +273,13 @@ export const Reports: React.FC = () => {
                     )}
                  </div>
                  
-                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
-                    <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg transition-colors">
-                        <Download size={18} />
-                        Download PDF
+                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end no-print">
+                    <button 
+                        onClick={handlePrint}
+                        className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg transition-colors w-full sm:w-auto justify-center"
+                    >
+                        <Printer size={18} />
+                        Print / Download PDF
                     </button>
                  </div>
               </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
 import { SchoolClass } from '../types';
 import { LayoutTemplate, Plus, Trash2 } from 'lucide-react';
+import { useToast } from '../components/ToastContext';
 
 export const ClassEntry: React.FC = () => {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -11,6 +12,7 @@ export const ClassEntry: React.FC = () => {
     className: '',
     section: ''
   });
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadClasses();
@@ -22,6 +24,7 @@ export const ClassEntry: React.FC = () => {
       setClasses(data);
     } catch (err) {
       console.error(err);
+      showToast("Failed to load classes", 'error');
     } finally {
       setLoading(false);
     }
@@ -31,9 +34,10 @@ export const ClassEntry: React.FC = () => {
       if(window.confirm("Are you sure you want to delete this class?")) {
           try {
               await DataService.deleteClass(id);
+              showToast("Class deleted successfully", 'success');
               loadClasses();
           } catch(e) {
-              alert("Failed to delete class.");
+              showToast("Failed to delete class", 'error');
           }
       }
   };
@@ -44,9 +48,10 @@ export const ClassEntry: React.FC = () => {
       await DataService.addClass(formData);
       setShowModal(false);
       setFormData({ className: '', section: '' });
+      showToast("Class added successfully", 'success');
       loadClasses();
     } catch (err) {
-      alert("Failed to create class");
+      showToast("Failed to create class", 'error');
     }
   };
 

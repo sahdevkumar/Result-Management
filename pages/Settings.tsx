@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { SubjectEntry } from './SubjectEntry';
 import { ClassEntry } from './ClassEntry';
-import { BookCopy, LayoutTemplate } from 'lucide-react';
+import { ExamTypeEntry } from './ExamTypeEntry';
+import { BookCopy, LayoutTemplate, Bookmark } from 'lucide-react';
 import clsx from 'clsx';
 
-type Tab = 'subjects' | 'classes';
+type Tab = 'subjects' | 'classes' | 'examTypes';
 
 export const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('subjects');
@@ -12,6 +13,7 @@ export const Settings: React.FC = () => {
   const tabs = [
     { id: 'subjects' as Tab, label: 'Subject Entry', icon: BookCopy },
     { id: 'classes' as Tab, label: 'Class Entry', icon: LayoutTemplate },
+    { id: 'examTypes' as Tab, label: 'Exam Types', icon: Bookmark },
   ];
 
   return (
@@ -24,7 +26,7 @@ export const Settings: React.FC = () => {
        </div>
 
        {/* Tab Navigation */}
-       <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 inline-flex">
+       <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 inline-flex flex-wrap gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -46,6 +48,7 @@ export const Settings: React.FC = () => {
        <div className="mt-6">
           {activeTab === 'subjects' && <SubjectEntry />}
           {activeTab === 'classes' && <ClassEntry />}
+          {activeTab === 'examTypes' && <ExamTypeEntry />}
        </div>
     </div>
   );

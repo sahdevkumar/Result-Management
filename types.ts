@@ -1,3 +1,4 @@
+
 export enum StudentStatus {
   Active = 'Active',
   Inactive = 'Inactive',
@@ -37,25 +38,29 @@ export interface SchoolClass {
   section: string;
 }
 
+export interface ExamType {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface Exam {
   id: string;
   name: string;
-  academicYear: string;
-  term: string;
-  startDate: string;
-  endDate: string;
+  type: string; // Changed from term
+  date: string; // Changed from start/end date range
   status: ExamStatus;
   subjects: Subject[];
 }
+
+export type AssessmentType = 'Objective' | 'Subjective';
 
 export interface MarkRecord {
   studentId: string;
   examId: string;
   subjectId: string;
-  theory: number;
-  practical: number;
-  assignment: number;
-  total: number;
+  assessmentType: AssessmentType; // New field
+  obtainedMarks: number;
   grade: string;
   remarks?: string;
   attended: boolean;
@@ -65,4 +70,37 @@ export interface ClassStats {
   totalStudents: number;
   passPercentage: number;
   averageGrade: string;
+}
+
+// --- Template Design Types ---
+
+export interface DesignElement {
+  id: string;
+  type: 'text' | 'image' | 'watermark';
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  content: string; // Text content or Image Data URL
+  style: {
+    fontSize?: number;
+    fontFamily?: string;
+    color?: string;
+    fontWeight?: string;       // 'normal' | 'bold'
+    fontStyle?: string;        // 'normal' | 'italic'
+    textDecoration?: string;   // 'none' | 'underline'
+    opacity?: number;
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+    lineHeight?: number;
+    letterSpacing?: number;
+  };
+}
+
+export interface SavedTemplate {
+  id: string;
+  name: string;
+  elements: DesignElement[];
+  width: number;
+  height: number;
+  createdAt: string;
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
 import { Subject } from '../types';
 import { BookCopy, Plus, Trash2 } from 'lucide-react';
+import { useToast } from '../components/ToastContext';
 
 export const SubjectEntry: React.FC = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -13,6 +14,7 @@ export const SubjectEntry: React.FC = () => {
     maxMarks: 100,
     passMarks: 40
   });
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadSubjects();
@@ -24,6 +26,7 @@ export const SubjectEntry: React.FC = () => {
       setSubjects(data);
     } catch (err) {
       console.error(err);
+      showToast("Failed to load subjects", 'error');
     } finally {
       setLoading(false);
     }
@@ -33,9 +36,10 @@ export const SubjectEntry: React.FC = () => {
       if(window.confirm("Are you sure you want to delete this subject?")) {
           try {
               await DataService.deleteSubject(id);
+              showToast("Subject deleted successfully", 'success');
               loadSubjects();
           } catch(e) {
-              alert("Failed to delete subject.");
+              showToast("Failed to delete subject", 'error');
           }
       }
   };
@@ -46,9 +50,10 @@ export const SubjectEntry: React.FC = () => {
       await DataService.addSubject(formData);
       setShowModal(false);
       setFormData({ name: '', code: '', maxMarks: 100, passMarks: 40 });
+      showToast("Subject added successfully", 'success');
       loadSubjects();
     } catch (err) {
-      alert("Failed to create subject");
+      showToast("Failed to create subject", 'error');
     }
   };
 

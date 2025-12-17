@@ -10,6 +10,45 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      @media print {
+        @page {
+            margin: 0;
+            size: auto; 
+        }
+        
+        /* Hide elements marked as no-print */
+        .no-print, .no-print * { 
+            display: none !important; 
+        }
+
+        /* Essential resets for full page printing */
+        html, body, #root, main {
+            background-color: white !important;
+            height: auto !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+        }
+
+        /* Specific fix for the main content area margin set in App.tsx */
+        main {
+            margin-left: 0 !important;
+        }
+
+        /* Ensure high-quality printing of graphics and colors */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-shadow: none !important; /* Remove screen shadows for crisp print */
+        }
+        
+        /* Allow print-specific visibility */
+        .print-only {
+            display: block !important;
+        }
+      }
     </style>
   <script type="importmap">
 {

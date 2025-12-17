@@ -11,10 +11,25 @@ export const generateStudentReportRemark = async (
   subjects: Subject[]
 ): Promise<string> => {
   try {
-    const marksSummary = marks.map(m => {
-      const subject = subjects.find(s => s.id === m.subjectId);
-      return `${subject?.name}: ${m.total}/${subject?.maxMarks} (Grade: ${m.grade})`;
-    }).join(", ");
+    // Consolidate marks for prompt
+    const subjectMap: Record<string, {name: string, obj: number, subj: number, total: number, max: number}> = {};
+    
+    marks.forEach(m => {
+        const sub = subjects.find(s => s.id === m.subjectId);
+        if(!sub) return;
+        
+        if(!subjectMap[sub.id]) {
+            subjectMap[sub.id] = { name: sub.name, obj: 0, subj: 0, total: 0, max: sub.maxMarks };
+        }
+        
+        if(m.assessmentType === 'Objective') subjectMap[sub.id].obj = m.obtainedMarks;
+        if(m.assessmentType === 'Subjective') subjectMap[sub.id].subj = m.obtainedMarks;
+        subjectMap[sub.id].total += m.obtainedMarks;
+    });
+
+    const marksSummary = Object.values(subjectMap).map(s => 
+      `${s.name}: ${s.total}/${s.max} (Obj: ${s.obj}, Subj: ${s.subj})`
+    ).join(", ");
 
     const prompt = `
       Act as a supportive and analytical senior teacher. 
@@ -22,8 +37,9 @@ export const generateStudentReportRemark = async (
       
       Student: ${student.fullName}
       Exam: ${examName}
-      Performance: ${marksSummary}
+      Performance Summary: ${marksSummary}
       
+      Note: The exam has Objective and Subjective components. 
       Highlight strengths and gently suggest areas for improvement if necessary. Direct address to the parent/guardian.
     `;
 

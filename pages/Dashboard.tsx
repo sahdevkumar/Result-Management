@@ -1,105 +1,165 @@
-import React from 'react';
-import { Users, BookOpen, Trophy, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import React, { useEffect, useState } from 'react';
+import { Users, BookOpen, Trophy, AlertTriangle, TrendingUp, Clock, ArrowRight } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { DataService } from '../services/dataService';
+import { useToast } from '../components/ToastContext';
+import clsx from 'clsx';
 
 const mockChartData = [
-  { name: 'Class 9A', pass: 85, fail: 15 },
-  { name: 'Class 9B', pass: 78, fail: 22 },
-  { name: 'Class 10A', pass: 92, fail: 8 },
-  { name: 'Class 10B', pass: 88, fail: 12 },
+  { name: '9A', pass: 85, fail: 15 },
+  { name: '9B', pass: 78, fail: 22 },
+  { name: '10A', pass: 92, fail: 8 },
+  { name: '10B', pass: 88, fail: 12 },
+  { name: '11A', pass: 75, fail: 25 },
 ];
 
-const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; subtext: string }> = ({ title, value, icon: Icon, color, subtext }) => (
-  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
-      </div>
-      <div className={`p-3 rounded-lg ${color} bg-opacity-10`}>
-        <Icon className={color.replace('bg-', 'text-')} size={24} />
-      </div>
+const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; gradient: string; subtext: string; trend?: string }> = ({ title, value, icon: Icon, gradient, subtext, trend }) => (
+  <div className="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group">
+    <div className={clsx("absolute top-0 right-0 w-32 h-32 bg-gradient-to-br rounded-full blur-3xl opacity-10 -translate-y-1/2 translate-x-1/2 group-hover:opacity-20 transition-opacity", gradient)}></div>
+    <div className="relative">
+        <div className="flex justify-between items-start mb-4">
+            <div className={clsx("p-3 rounded-xl bg-gradient-to-br text-white shadow-lg", gradient)}>
+                <Icon size={22} />
+            </div>
+            {trend && (
+                <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                    <TrendingUp size={12} /> {trend}
+                </span>
+            )}
+        </div>
+        <div>
+            <h3 className="text-3xl font-bold text-slate-800 tracking-tight mb-1">{value}</h3>
+            <p className="text-sm font-medium text-slate-500">{title}</p>
+        </div>
+        <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+            <p className="text-xs text-slate-400">{subtext}</p>
+            <ArrowRight size={14} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+        </div>
     </div>
-    <p className="text-xs text-slate-400 mt-4">{subtext}</p>
   </div>
 );
 
 export const Dashboard: React.FC = () => {
+  const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, passRate: 0, pending: 0 });
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const loadStats = async () => {
+        try {
+            const data = await DataService.getDashboardStats();
+            setStats(data);
+        } catch (e) {
+            console.error("Failed to load dashboard stats");
+        }
+    };
+    loadStats();
+  }, []);
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
-        <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Academic Year: 2023-2024</span>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard Overview</h1>
+          <p className="text-slate-500 text-sm">Welcome back, Admin. Here's what's happening today.</p>
+        </div>
+        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+             <span className="text-sm font-bold text-slate-700">Academic Year: {new Date().getFullYear()}</span>
+        </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Students" 
-          value="1,248" 
+          value={stats.totalStudents.toString()} 
           icon={Users} 
-          color="bg-blue-500" 
-          subtext="+4.5% from last term"
+          gradient="from-blue-500 to-indigo-600" 
+          subtext="Active enrollments"
+          trend="+5%"
         />
         <StatCard 
-          title="Exams Conducted" 
-          value="12" 
+          title="Exams Created" 
+          value={stats.activeExams.toString()} 
           icon={BookOpen} 
-          color="bg-indigo-500" 
-          subtext="2 ongoing currently"
+          gradient="from-violet-500 to-purple-600" 
+          subtext="This academic session"
         />
         <StatCard 
-          title="Average Pass Rate" 
-          value="88.4%" 
+          title="Avg Pass Rate" 
+          value={`${stats.passRate}%`} 
           icon={Trophy} 
-          color="bg-emerald-500" 
-          subtext="+2.1% improvement"
+          gradient="from-emerald-400 to-teal-500" 
+          subtext="Across all classes"
+          trend="+2.1%"
         />
         <StatCard 
           title="Pending Results" 
-          value="3 Classes" 
+          value={stats.pending.toString()} 
           icon={AlertTriangle} 
-          color="bg-amber-500" 
-          subtext="Needs attention"
+          gradient="from-amber-400 to-orange-500" 
+          subtext="Classes pending publish"
         />
       </div>
 
-      {/* Charts & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">Class Performance Overview (Last Exam)</h2>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Chart Section */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+          <div className="flex justify-between items-center mb-6">
+             <h2 className="text-lg font-bold text-slate-800">Class Performance Analysis</h2>
+             <select className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-100">
+                 <option>Last Exam</option>
+                 <option>Annual</option>
+             </select>
+          </div>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+              <BarChart data={mockChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                    <linearGradient id="colorPass" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                 <Tooltip 
-                    cursor={{fill: '#f1f5f9'}}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    cursor={{fill: '#f8fafc'}}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
-                <Bar dataKey="pass" name="Pass %" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
-                <Bar dataKey="fail" name="Fail %" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
+                <Bar dataKey="pass" name="Pass %" fill="url(#colorPass)" radius={[6, 6, 0, 0]} barSize={32} />
+                <Bar dataKey="fail" name="Fail %" fill="#cbd5e1" radius={[6, 6, 0, 0]} barSize={32} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Recent Activity</h2>
-          <div className="space-y-4">
+        {/* Activity Feed */}
+        <div className="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col">
+          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+             <Clock size={20} className="text-indigo-500" /> Recent Activity
+          </h2>
+          <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-start gap-3 pb-3 border-b border-slate-50 last:border-0 last:pb-0">
-                <div className="w-2 h-2 mt-2 rounded-full bg-blue-500"></div>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Marks updated for Class 10A</p>
-                  <p className="text-xs text-slate-400">Physics • 2 hours ago</p>
+              <div key={i} className="flex gap-4 group cursor-pointer">
+                <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 ring-4 ring-indigo-50"></div>
+                    <div className="w-0.5 h-full bg-slate-100 mt-2 group-last:hidden"></div>
+                </div>
+                <div className="pb-4 group-last:pb-0">
+                  <p className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">Marks updated for Class 10A</p>
+                  <p className="text-xs text-slate-400 mt-1">Physics • {i} hours ago</p>
                 </div>
               </div>
             ))}
           </div>
-          <button className="w-full mt-6 py-2 px-4 bg-slate-50 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors">
-            View Audit Log
+          <button 
+            className="w-full mt-6 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 hover:text-indigo-600 transition-all"
+          >
+            View Full Audit Log
           </button>
         </div>
       </div>
