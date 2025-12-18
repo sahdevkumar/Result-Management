@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
 import { Exam, Subject, Student, MarkRecord, SchoolClass } from '../types';
@@ -273,7 +274,7 @@ export const MarksEntry: React.FC = () => {
                   <span className="text-[10px] font-black uppercase text-indigo-200 mb-1">Objective Max</span>
                   <input 
                     type="number" 
-                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black focus:bg-white focus:text-indigo-600 outline-none transition-all"
+                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black text-white focus:bg-white focus:text-indigo-600 outline-none transition-all placeholder-white/50"
                     value={localMaxObj}
                     onChange={(e) => setLocalMaxObj(parseInt(e.target.value) || 0)}
                   />
@@ -283,7 +284,7 @@ export const MarksEntry: React.FC = () => {
                   <span className="text-[10px] font-black uppercase text-indigo-200 mb-1">Subjective Max</span>
                   <input 
                     type="number" 
-                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black focus:bg-white focus:text-indigo-600 outline-none transition-all"
+                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black text-white focus:bg-white focus:text-indigo-600 outline-none transition-all placeholder-white/50"
                     value={localMaxSubj}
                     onChange={(e) => setLocalMaxSubj(parseInt(e.target.value) || 0)}
                   />
@@ -345,7 +346,7 @@ export const MarksEntry: React.FC = () => {
                                                 "w-full p-2.5 rounded-xl border text-center font-black text-lg outline-none transition-all",
                                                 isObjInvalid 
                                                   ? "border-red-500 bg-red-50 text-red-600" 
-                                                  : "border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
+                                                  : "border-slate-200 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
                                             )}
                                             value={record.objMarks || ''}
                                             onChange={(e) => handleScoreUpdate(student.id, 'objMarks', e.target.value)}
@@ -364,7 +365,7 @@ export const MarksEntry: React.FC = () => {
                                                 "w-full p-2.5 rounded-xl border text-center font-black text-lg outline-none transition-all",
                                                 isSubInvalid 
                                                   ? "border-red-500 bg-red-50 text-red-600" 
-                                                  : "border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
+                                                  : "border-slate-200 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
                                             )}
                                             value={record.subMarks || ''}
                                             onChange={(e) => handleScoreUpdate(student.id, 'subMarks', e.target.value)}

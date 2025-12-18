@@ -167,7 +167,7 @@ export const Reports: React.FC = () => {
                     <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Select Exam</label>
                     <div className="relative">
                         <select 
-                            className="w-full appearance-none bg-slate-50 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full appearance-none bg-slate-50 border border-slate-300 text-slate-900 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={selectedExamId}
                             onChange={(e) => setSelectedExamId(e.target.value)}
                         >
@@ -180,7 +180,7 @@ export const Reports: React.FC = () => {
                     <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Select Student</label>
                     <div className="relative">
                         <select 
-                            className="w-full appearance-none bg-slate-50 border border-slate-300 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full appearance-none bg-slate-50 border border-slate-300 text-slate-900 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             value={selectedStudentId}
                             onChange={(e) => setSelectedStudentId(e.target.value)}
                         >

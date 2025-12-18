@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Users, BookOpen, Trophy, AlertTriangle, TrendingUp, Clock, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -109,7 +110,7 @@ export const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
           <div className="flex justify-between items-center mb-6">
              <h2 className="text-lg font-bold text-slate-800">Class Performance Analysis</h2>
-             <select className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-100">
+             <select className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-100 text-slate-700">
                  <option>Last Exam</option>
                  <option>Annual</option>
              </select>

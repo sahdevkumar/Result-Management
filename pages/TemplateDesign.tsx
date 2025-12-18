@@ -1,15 +1,15 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Image as ImageIcon, Type, Save, Trash2, Droplet, Layout, Maximize, Minus, Plus, 
-  List as ListIcon, Palette, Settings, School,
-  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, Upload, Loader2
+  Image as ImageIcon, Type, Save, Trash2, Layout, Maximize, Minus, Plus, 
+  List as ListIcon, Palette, Settings, Bold, Italic, Upload, Loader2
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DesignElement, SavedTemplate } from '../types';
 import { DataService } from '../services/dataService';
 import clsx from 'clsx';
 
-type Tab = 'design' | 'list' | 'size' | 'assets';
+type Tab = 'design' | 'list' | 'size';
 
 export const TemplateDesign: React.FC = () => {
   // State
@@ -19,14 +19,6 @@ export const TemplateDesign: React.FC = () => {
   const [scale, setScale] = useState(0.8);
   const [loading, setLoading] = useState(true);
   
-  // School Info State
-  const [schoolInfo, setSchoolInfo] = useState({
-    name: 'UNACADEMY',
-    tagline: 'Excellence in Education',
-    logo: '',
-    watermark: ''
-  });
-  const [isSavingAssets, setIsSavingAssets] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Canvas Size State
@@ -53,34 +45,16 @@ export const TemplateDesign: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [info, templates] = await Promise.all([
-                DataService.getSchoolInfo(),
-                DataService.getTemplates()
-            ]);
-            setSchoolInfo(info);
+            const templates = await DataService.getTemplates();
             setSavedTemplates(templates);
         } catch (e) {
-            showToast("Error connecting to database. Run SQL commands in schema.sql", 'error');
+            showToast("Error connecting to database.", 'error');
         } finally {
             setLoading(false);
         }
     };
     fetchData();
   }, []);
-
-  // --- DB Operations ---
-
-  const saveSchoolAssets = async () => {
-      setIsSavingAssets(true);
-      try {
-          await DataService.updateSchoolInfo(schoolInfo);
-          showToast("School assets saved to database", 'success');
-      } catch (e) {
-          showToast("Failed to save to database. Run SQL in schema.sql", 'error');
-      } finally {
-          setIsSavingAssets(false);
-      }
-  };
 
   const saveTemplate = async () => {
     const name = prompt("Enter a name for this template:", `Template ${savedTemplates.length + 1}`);
@@ -102,7 +76,7 @@ export const TemplateDesign: React.FC = () => {
         setSavedTemplates(updated);
         showToast("Layout saved to database", 'success');
     } catch (e) {
-        showToast("Failed to save layout. Check 'templates' table.", 'error');
+        showToast("Failed to save layout.", 'error');
     } finally {
         setIsSavingTemplate(false);
     }
@@ -149,18 +123,6 @@ export const TemplateDesign: React.FC = () => {
         if (isWatermark) setElements(prev => [...prev.filter(el => el.type !== 'watermark'), newEl]);
         else setElements(prev => [...prev, newEl]);
         setSelectedId(newEl.id);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleGlobalAssetUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'watermark') => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setSchoolInfo(prev => ({ ...prev, [type]: event.target?.result as string }));
-        showToast(`Selected new ${type}. Click "Save Assets" to sync.`, 'info');
       };
       reader.readAsDataURL(file);
     }
@@ -280,9 +242,6 @@ export const TemplateDesign: React.FC = () => {
           <button onClick={() => setActiveTab('design')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'design' ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:bg-slate-50")}>
             <Palette size={14} /> Dsgn
           </button>
-          <button onClick={() => setActiveTab('assets')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'assets' ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:bg-slate-50")}>
-            <School size={14} /> Assets
-          </button>
           <button onClick={() => setActiveTab('list')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'list' ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:bg-slate-50")}>
             <ListIcon size={14} /> List
           </button>
@@ -292,51 +251,6 @@ export const TemplateDesign: React.FC = () => {
         </div>
 
         <div className="p-4 overflow-y-auto flex-1">
-          {activeTab === 'assets' && (
-            <div className="space-y-6">
-                <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-[11px] text-indigo-800">
-                    Run the SQL in <b>schema.sql</b> to enable database storage.
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">School Name</label>
-                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg text-sm" value={schoolInfo.name} onChange={(e) => setSchoolInfo(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tagline</label>
-                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg text-sm" value={schoolInfo.tagline} onChange={(e) => setSchoolInfo(prev => ({ ...prev, tagline: e.target.value }))} />
-                    </div>
-                    <div className="pt-2">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Primary Logo</label>
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-                                {schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" /> : <ImageIcon size={24} className="text-slate-300" />}
-                            </div>
-                            <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-900">
-                                <Upload size={14} /> Upload Logo
-                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'logo')} />
-                            </label>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Watermark</label>
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-                                {schoolInfo.watermark ? <img src={schoolInfo.watermark} className="w-full h-full object-contain opacity-30" /> : <Droplet size={24} className="text-slate-300" />}
-                            </div>
-                            <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-50">
-                                <Upload size={14} /> Upload
-                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'watermark')} />
-                            </label>
-                        </div>
-                    </div>
-                    <button onClick={saveSchoolAssets} disabled={isSavingAssets} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50">
-                        {isSavingAssets ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Assets to DB
-                    </button>
-                </div>
-            </div>
-          )}
-
           {activeTab === 'design' && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-2">
@@ -359,12 +273,12 @@ export const TemplateDesign: React.FC = () => {
                       <div className="space-y-4">
                           <div>
                               <label className="block text-xs font-medium text-slate-500 mb-1">Content</label>
-                              <textarea className="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" rows={3} value={selectedElement.content} onChange={(e) => updateElementContent(e.target.value)} />
+                              <textarea className="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-slate-900 bg-white" rows={3} value={selectedElement.content} onChange={(e) => updateElementContent(e.target.value)} />
                           </div>
                           <div className="flex gap-2">
                               <div className="flex-1">
                                    <label className="block text-[10px] text-slate-400 mb-1">Font Size</label>
-                                   <input type="number" className="w-full p-1.5 border border-slate-300 rounded text-xs" value={selectedElement.style.fontSize} onChange={(e) => updateElementStyle('fontSize', parseInt(e.target.value))} />
+                                   <input type="number" className="w-full p-1.5 border border-slate-300 rounded text-xs text-slate-900 bg-white" value={selectedElement.style.fontSize} onChange={(e) => updateElementStyle('fontSize', parseInt(e.target.value))} />
                               </div>
                               <div className="w-10">
                                    <label className="block text-[10px] text-slate-400 mb-1">Color</label>
@@ -420,8 +334,8 @@ export const TemplateDesign: React.FC = () => {
                </div>
                <div><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Custom (px)</h3>
                   <div className="flex gap-2 mb-2">
-                     <input type="number" className="w-full p-2 border border-slate-300 rounded text-sm" value={customSize.width} onChange={(e) => setCustomSize({...customSize, width: parseInt(e.target.value) || 0})} />
-                     <input type="number" className="w-full p-2 border border-slate-300 rounded text-sm" value={customSize.height} onChange={(e) => setCustomSize({...customSize, height: parseInt(e.target.value) || 0})} />
+                     <input type="number" className="w-full p-2 border border-slate-300 rounded text-sm text-slate-900 bg-white" value={customSize.width} onChange={(e) => setCustomSize({...customSize, width: parseInt(e.target.value) || 0})} />
+                     <input type="number" className="w-full p-2 border border-slate-300 rounded text-sm text-slate-900 bg-white" value={customSize.height} onChange={(e) => setCustomSize({...customSize, height: parseInt(e.target.value) || 0})} />
                   </div>
                   <button onClick={() => applyPageSize(customSize.width, customSize.height, 'Custom')} className="w-full py-2 bg-slate-800 text-white rounded text-sm font-medium">Apply</button>
                </div>

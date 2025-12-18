@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
-import { Exam, Subject, Student, MarkRecord, SchoolClass } from '../types';
-import { Save, ChevronRight, MessageSquareQuote } from 'lucide-react';
+import { Exam, Subject, Student, SchoolClass } from '../types';
+import { Save, MessageSquareQuote } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 
 export const TeachersRemarks: React.FC = () => {
@@ -16,7 +15,8 @@ export const TeachersRemarks: React.FC = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [marksData, setMarksData] = useState<Record<string, MarkRecord>>({});
+  // Store remarks as simple key-value: studentId -> remark string
+  const [remarksMap, setRemarksMap] = useState<Record<string, string>>({});
   
   // UI State
   const [loading, setLoading] = useState(false);
@@ -51,7 +51,7 @@ export const TeachersRemarks: React.FC = () => {
         if(eData.length > 0) setSelectedExamId(eData[0].id);
         if(cData.length > 0) setSelectedClassId(cData[0].id);
         if(sData.length > 0) setSelectedSubjectId(sData[0].id);
-      } catch (err) {
+      } catch (err: any) {
         showToast("Failed to load initial data", 'error');
       }
     };
@@ -60,21 +60,20 @@ export const TeachersRemarks: React.FC = () => {
 
   useEffect(() => {
     if (selectedExamId && selectedSubjectId) {
-      loadMarks();
+      loadRemarks();
     }
   }, [selectedExamId, selectedSubjectId]);
 
-  const loadMarks = async () => {
+  const loadRemarks = async () => {
     setLoading(true);
     try {
-      // Fix: Fetch marks without unnecessary 3rd argument as MarkRecord is unified
-      const records = await DataService.getMarks(selectedExamId, selectedSubjectId);
-      const marksMap: Record<string, MarkRecord> = {};
+      const records = await DataService.getTeacherRemarks(selectedExamId, selectedSubjectId);
+      const map: Record<string, string> = {};
       records.forEach(r => {
-        marksMap[r.studentId] = r;
+        map[r.studentId] = r.remark;
       });
-      setMarksData(marksMap);
-    } catch(e) {
+      setRemarksMap(map);
+    } catch(e: any) {
       showToast("Error loading remarks", 'error');
     } finally {
       setLoading(false);
@@ -82,40 +81,32 @@ export const TeachersRemarks: React.FC = () => {
   };
 
   const handleRemarkChange = (studentId: string, value: string) => {
-    // Fix: Fallback object must match MarkRecord interface (no assessmentType or obtainedMarks)
-    const currentMark = marksData[studentId] || {
-      studentId,
-      examId: selectedExamId,
-      subjectId: selectedSubjectId,
-      objMarks: 0,
-      objMaxMarks: 0,
-      subMarks: 0,
-      subMaxMarks: 0,
-      examDate: new Date().toISOString().split('T')[0],
-      grade: 'F',
-      attended: true,
-      remarks: ''
-    };
-
-    const updatedMark = {
-      ...currentMark,
-      remarks: value
-    };
-    
-    setMarksData(prev => ({
+    setRemarksMap(prev => ({
       ...prev,
-      [studentId]: updatedMark
+      [studentId]: value
     }));
   };
 
   const handleSave = async () => {
+    if (!selectedExamId || !selectedSubjectId) {
+        showToast("Please select exam and subject", 'error');
+        return;
+    }
     setSaving(true);
     try {
-        // Only save records that have been modified or exist
-        const promises = (Object.values(marksData) as MarkRecord[]).map(record => DataService.updateMark(record));
+        // Save all remarks that are present in the map
+        const promises = Object.entries(remarksMap).map(([studentId, remark]) => {
+            return DataService.saveTeacherRemark({
+                studentId,
+                examId: selectedExamId,
+                subjectId: selectedSubjectId,
+                remark: remark as string
+            });
+        });
+        
         await Promise.all(promises);
         showToast("Remarks saved successfully!", 'success');
-    } catch(e) {
+    } catch(e: any) {
         showToast("Error saving remarks", 'error');
     } finally {
         setSaving(false);
@@ -156,7 +147,7 @@ export const TeachersRemarks: React.FC = () => {
             <div className="relative group">
                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">1. Select Exam</label>
                <select 
-                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
+                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer text-slate-700"
                 value={selectedExamId}
                 onChange={(e) => setSelectedExamId(e.target.value)}
               >
@@ -168,7 +159,7 @@ export const TeachersRemarks: React.FC = () => {
             <div className="relative group">
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">2. Select Class</label>
               <select 
-                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
+                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer text-slate-700"
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
               >
@@ -181,7 +172,7 @@ export const TeachersRemarks: React.FC = () => {
              <div className="relative group">
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">3. Select Subject</label>
               <select 
-                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
+                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer text-slate-700"
                 value={selectedSubjectId}
                 onChange={(e) => setSelectedSubjectId(e.target.value)}
               >
@@ -214,7 +205,7 @@ export const TeachersRemarks: React.FC = () => {
                          <tr><td colSpan={2} className="p-8 text-center text-slate-500">No students found for selection.</td></tr>
                     ) : (
                         filteredStudents.map(student => {
-                            const mark = marksData[student.id] || { remarks: '' };
+                            const remark = remarksMap[student.id] || '';
 
                             return (
                                 <tr key={student.id} className="hover:bg-slate-50 transition-colors group">
@@ -232,8 +223,8 @@ export const TeachersRemarks: React.FC = () => {
                                     <td className="px-4 py-4">
                                         <div className="space-y-2">
                                             <textarea 
-                                                className="w-full p-3 border border-slate-300 rounded-lg text-sm transition-all focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 focus:bg-white resize-y min-h-[60px]"
-                                                value={mark.remarks || ''}
+                                                className="w-full p-3 border border-slate-300 rounded-lg text-sm transition-all focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 focus:bg-white resize-y min-h-[60px] text-slate-900"
+                                                value={remark}
                                                 onChange={(e) => handleRemarkChange(student.id, e.target.value)}
                                                 placeholder="Enter remarks..."
                                                 rows={2}

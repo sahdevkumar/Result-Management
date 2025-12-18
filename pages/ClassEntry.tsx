@@ -175,7 +175,7 @@ export const ClassEntry: React.FC = () => {
                   type="text" 
                   required
                   placeholder="e.g., Class 10"
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                   value={formData.className}
                   onChange={(e) => setFormData({...formData, className: e.target.value})}
                 />
@@ -186,7 +186,7 @@ export const ClassEntry: React.FC = () => {
                   type="text" 
                   required
                   placeholder="e.g., A"
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                   value={formData.section}
                   onChange={(e) => setFormData({...formData, section: e.target.value})}
                 />

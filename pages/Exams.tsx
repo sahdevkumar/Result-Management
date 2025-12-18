@@ -231,7 +231,7 @@ export const Exams: React.FC = () => {
                   name="name"
                   required
                   placeholder="e.g., Physics Unit Test 1"
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                   value={formData.name}
                   onChange={handleInputChange}
                 />
@@ -242,7 +242,7 @@ export const Exams: React.FC = () => {
                 <select 
                     name="type"
                     required
-                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                     value={formData.type}
                     onChange={handleInputChange}
                 >
@@ -265,7 +265,7 @@ export const Exams: React.FC = () => {
                   type="date" 
                   name="date"
                   required
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                   value={formData.date}
                   onChange={handleInputChange}
                 />
@@ -275,7 +275,7 @@ export const Exams: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                 <select 
                    name="status"
-                   className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                   className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                    value={formData.status}
                    onChange={handleInputChange}
                 >

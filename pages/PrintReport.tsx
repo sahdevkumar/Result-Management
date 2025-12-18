@@ -215,7 +215,7 @@ export const PrintReport: React.FC = () => {
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">1. Select Template</label>
               <select 
-                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 value={templateId}
                 onChange={(e) => setTemplateId(e.target.value)}
               >
@@ -228,7 +228,7 @@ export const PrintReport: React.FC = () => {
               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">2. Paper Settings</label>
               <div className="grid grid-cols-2 gap-2">
                 <select 
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-slate-50"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-slate-50 text-slate-900"
                   value={paperSize}
                   onChange={(e) => setPaperSize(e.target.value as PaperSize)}
                 >
@@ -236,7 +236,7 @@ export const PrintReport: React.FC = () => {
                   <option value="Letter">Letter Size</option>
                 </select>
                 <select 
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-slate-50"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-slate-50 text-slate-900"
                   value={orientation}
                   onChange={(e) => setOrientation(e.target.value as Orientation)}
                 >
@@ -249,7 +249,7 @@ export const PrintReport: React.FC = () => {
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">3. Select Exam</label>
               <select 
-                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 value={examId}
                 onChange={(e) => setExamId(e.target.value)}
               >
@@ -260,7 +260,7 @@ export const PrintReport: React.FC = () => {
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">4. Select Class</label>
               <select 
-                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 value={classId}
                 onChange={(e) => setClassId(e.target.value)}
               >
@@ -273,7 +273,7 @@ export const PrintReport: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">5. Select Student</label>
                 <select 
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
                   disabled={!classId}

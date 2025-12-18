@@ -266,7 +266,7 @@ export const Students: React.FC = () => {
             <input 
               type="text" 
               placeholder="Search by name or roll number..." 
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white text-slate-900"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -291,7 +291,7 @@ export const Students: React.FC = () => {
                 <div>
                     <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
                     <select 
-                        className="text-sm border border-slate-300 rounded p-1"
+                        className="text-sm border border-slate-300 rounded p-1 bg-white text-slate-900"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
@@ -398,7 +398,7 @@ export const Students: React.FC = () => {
                       name="fullName"
                       required
                       placeholder="e.g. John Doe"
-                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                       value={formData.fullName}
                       onChange={handleInputChange}
                     />
@@ -409,7 +409,7 @@ export const Students: React.FC = () => {
                     <select 
                       name="classId"
                       required
-                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                       value={formData.classId}
                       onChange={handleInputChange}
                     >
@@ -426,7 +426,7 @@ export const Students: React.FC = () => {
                       type="tel" 
                       name="contactNumber"
                       placeholder="e.g. 9876543210"
-                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                       value={formData.contactNumber}
                       onChange={handleInputChange}
                     />
@@ -438,7 +438,7 @@ export const Students: React.FC = () => {
                       type="text" 
                       name="guardianName"
                       placeholder="e.g. Jane Doe"
-                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                       value={formData.guardianName}
                       onChange={handleInputChange}
                     />
@@ -448,7 +448,7 @@ export const Students: React.FC = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                     <select 
                         name="status"
-                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                         value={formData.status}
                         onChange={handleInputChange}
                     >

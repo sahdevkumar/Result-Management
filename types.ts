@@ -71,6 +71,13 @@ export interface MarkRecord {
   attended: boolean;
 }
 
+export interface TeacherRemark {
+  studentId: string;
+  examId: string;
+  subjectId: string;
+  remark: string;
+}
+
 export interface ClassStats {
   totalStudents: number;
   passPercentage: number;
