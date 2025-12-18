@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
-import { Exam, Subject, Student, MarkRecord, SchoolClass, AssessmentType } from '../types';
-import { Save, AlertCircle, CheckCircle, ChevronRight, Info } from 'lucide-react';
+import { Exam, Subject, Student, MarkRecord, SchoolClass } from '../types';
+import { Save, AlertCircle, CheckCircle, Calculator, Info, BookOpen, GraduationCap, Calendar, Loader2 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import clsx from 'clsx';
 
 export const MarksEntry: React.FC = () => {
-  // Selection State (Flow: Exam > Class > Subject)
+  // Selection State
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   
+  // Local Max Marks (Global for current subject selection)
+  const [localMaxObj, setLocalMaxObj] = useState<number>(0);
+  const [localMaxSubj, setLocalMaxSubj] = useState<number>(0);
+
   // Data State
   const [exams, setExams] = useState<Exam[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   
-  // Map: studentId -> { Objective: MarkRecord, Subjective: MarkRecord }
-  const [marksData, setMarksData] = useState<Record<string, { Objective: MarkRecord, Subjective: MarkRecord }>>({});
+  // Marks logic - Unified map
+  const [marksData, setMarksData] = useState<Record<string, MarkRecord>>({});
   
   // UI State
   const [loading, setLoading] = useState(false);
@@ -39,7 +43,6 @@ export const MarksEntry: React.FC = () => {
         setClasses(cData);
         setStudents(stData);
         
-        // Initial defaults
         if(eData.length > 0) setSelectedExamId(eData[0].id);
         if(cData.length > 0) setSelectedClassId(cData[0].id);
         if(sData.length > 0) setSelectedSubjectId(sData[0].id);
@@ -50,18 +53,31 @@ export const MarksEntry: React.FC = () => {
     init();
   }, []);
 
+  // Sync Max Marks when subject changes (Default Fallback)
+  useEffect(() => {
+    const sub = subjects.find(s => s.id === selectedSubjectId);
+    if (sub) {
+      setLocalMaxObj(sub.maxMarksObjective || 0);
+      setLocalMaxSubj(sub.maxMarksSubjective || 0);
+    }
+  }, [selectedSubjectId, subjects]);
+
+  // Load Marks when exam or subject changes
   useEffect(() => {
     if (selectedExamId && selectedSubjectId) {
       loadMarks();
     }
   }, [selectedExamId, selectedSubjectId]);
 
-  const createEmptyRecord = (studentId: string, type: AssessmentType): MarkRecord => ({
+  const createEmptyRecord = (studentId: string): MarkRecord => ({
       studentId,
       examId: selectedExamId,
       subjectId: selectedSubjectId,
-      assessmentType: type,
-      obtainedMarks: 0,
+      objMarks: 0,
+      objMaxMarks: localMaxObj,
+      subMarks: 0,
+      subMaxMarks: localMaxSubj,
+      examDate: exams.find(e => e.id === selectedExamId)?.date || new Date().toISOString().split('T')[0],
       grade: 'F',
       attended: true
   });
@@ -69,21 +85,22 @@ export const MarksEntry: React.FC = () => {
   const loadMarks = async () => {
     setLoading(true);
     try {
-      // Fetch all marks for this exam & subject (both Objective and Subjective)
       const records = await DataService.getMarks(selectedExamId, selectedSubjectId);
+      const marksMap: Record<string, MarkRecord> = {};
       
-      const marksMap: Record<string, { Objective: MarkRecord, Subjective: MarkRecord }> = {};
-      
-      // Populate map with existing records
-      records.forEach(r => {
-        if (!marksMap[r.studentId]) {
-            marksMap[r.studentId] = {
-                Objective: createEmptyRecord(r.studentId, 'Objective'),
-                Subjective: createEmptyRecord(r.studentId, 'Subjective')
-            };
+      // If marks exist for this exam/subject, use the stored max marks from the table
+      // This overrides the default subject max marks, allowing for exam-specific max marks.
+      // We check > 0 to ensure we don't accidentally pull 0s from legacy data or initialized rows
+      if (records.length > 0) {
+        const firstRecord = records[0];
+        if ((firstRecord.objMaxMarks || 0) > 0 || (firstRecord.subMaxMarks || 0) > 0) {
+           setLocalMaxObj(firstRecord.objMaxMarks || 0);
+           setLocalMaxSubj(firstRecord.subMaxMarks || 0);
         }
-        if (r.assessmentType === 'Objective') marksMap[r.studentId].Objective = r;
-        if (r.assessmentType === 'Subjective') marksMap[r.studentId].Subjective = r;
+      }
+
+      records.forEach(r => {
+        marksMap[r.studentId] = r;
       });
 
       setMarksData(marksMap);
@@ -94,281 +111,306 @@ export const MarksEntry: React.FC = () => {
     }
   };
 
-  const calculateGrade = (total: number, max: number) => {
-    if (max <= 0) return 'F';
-    const percentage = (total / max) * 100;
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B';
-    if (percentage >= 60) return 'C';
-    if (percentage >= 50) return 'D';
-    if (percentage >= 40) return 'E';
-    return 'F';
-  };
-
-  const currentSubject = subjects.find(s => s.id === selectedSubjectId);
-  const currentClass = classes.find(c => c.id === selectedClassId);
-
-  // Max marks logic
-  const subjectTotalMax = currentSubject?.maxMarks || 100;
-  const componentMaxMarks = Math.round(subjectTotalMax / 2);
-
-  const handleMarkChange = (studentId: string, type: AssessmentType, value: string) => {
+  const handleScoreUpdate = (studentId: string, field: 'objMarks' | 'subMarks', value: string) => {
     const numValue = value === '' ? 0 : parseFloat(value);
-    
     setMarksData(prev => {
-        const studentRecords = prev[studentId] || {
-            Objective: createEmptyRecord(studentId, 'Objective'),
-            Subjective: createEmptyRecord(studentId, 'Subjective')
+        const record = prev[studentId] || createEmptyRecord(studentId);
+        const updated = {
+            ...record,
+            [field]: isNaN(numValue) ? 0 : numValue,
+            objMaxMarks: localMaxObj,
+            subMaxMarks: localMaxSubj,
+            examId: selectedExamId,
+            subjectId: selectedSubjectId
         };
         
-        const currentMark = studentRecords[type];
+        // Auto-calculate grade based on total percentage
+        const totalObtained = updated.objMarks + updated.subMarks;
+        const totalMax = localMaxObj + localMaxSubj;
+        const pct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
         
-        const updatedMark = {
-            ...currentMark,
-            examId: selectedExamId, 
-            subjectId: selectedSubjectId,
-            obtainedMarks: isNaN(numValue) ? 0 : numValue,
-            grade: calculateGrade(isNaN(numValue) ? 0 : numValue, componentMaxMarks)
-        };
-
-        return {
-            ...prev,
-            [studentId]: {
-                ...studentRecords,
-                [type]: updatedMark
-            }
-        };
+        updated.grade = pct >= 33 ? 'Pass' : 'Fail';
+        
+        return { ...prev, [studentId]: updated };
     });
   };
 
   const handleSave = async () => {
+    const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+    if (!currentSubject) {
+        showToast("Please select a subject first", "error");
+        return;
+    }
+
+    if (localMaxObj === 0 && localMaxSubj === 0) {
+      showToast("Please define Maximum Marks (Objective or Subjective) before saving", "error");
+      return;
+    }
+
     setSaving(true);
     try {
-        const allRecords: MarkRecord[] = [];
-        Object.values(marksData).forEach(pair => {
-            allRecords.push(pair.Objective);
-            allRecords.push(pair.Subjective);
+        // 1. Update Global Subject Config first (Optional, but keeps global sync)
+        await DataService.updateSubject({
+            ...currentSubject,
+            maxMarksObjective: localMaxObj,
+            maxMarksSubjective: localMaxSubj,
+            maxMarks: localMaxObj + localMaxSubj
+        });
+
+        // 2. Prepare Student Mark Records
+        // IMPORTANT: We explicitly include the current localMaxObj/Subj here to ensure
+        // the marks table captures the max marks at the time of entry.
+        const recordsToSave = filteredStudents.map(s => {
+            const record = marksData[s.id] || createEmptyRecord(s.id);
+            return {
+                ...record,
+                objMaxMarks: localMaxObj,
+                subMaxMarks: localMaxSubj,
+                examId: selectedExamId,
+                subjectId: selectedSubjectId
+            };
         });
         
-        const promises = allRecords.map(record => DataService.updateMark(record));
-        await Promise.all(promises);
-        showToast("Marks saved successfully!", 'success');
-    } catch(e) {
-        showToast("Error saving marks", 'error');
+        // 3. Bulk Upsert Marks
+        await DataService.bulkUpdateMarks(recordsToSave);
+        
+        showToast("Marks and Configuration saved successfully!", 'success');
+        
+        // Refresh local subjects to sync UI
+        const sData = await DataService.getSubjects();
+        setSubjects(sData);
+        // Refresh marks from DB
+        await loadMarks();
+    } catch(e: any) {
+        console.error("Save failed:", e);
+        showToast(`Save failed: ${e.message || "Unknown database error"}`, 'error');
     } finally {
         setSaving(false);
     }
   };
 
-  // Filter students based on selected class
+  const currentClass = classes.find(c => c.id === selectedClassId);
+
   const filteredStudents = students.filter(student => {
-    if (!selectedClassId) return true; 
-    if (!currentClass) return true;
+    if (!selectedClassId || !currentClass) return true;
     return student.className === currentClass.className && student.section === currentClass.section;
   });
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">Marks Entry</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+             <Calculator className="text-indigo-600" /> Result Management Entry
+          </h1>
+          <p className="text-slate-500 text-sm">Select subject and define max marks to begin entry.</p>
+        </div>
         <button 
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-all"
+          onClick={handleSave} 
+          disabled={saving || loading} 
+          className="flex items-center gap-2 bg-slate-900 hover:bg-black text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-slate-200 transition-all disabled:opacity-50"
         >
-          {saving ? 'Saving...' : <><Save size={18} /> Save Marks</>}
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
+          {saving ? 'Saving...' : 'Finalize & Save Marks'}
         </button>
       </div>
 
-      {/* Selectors */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            
-            {/* 1. Exam */}
-            <div className="relative group">
-               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">1. Select Exam</label>
-               <select 
-                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
-                value={selectedExamId}
-                onChange={(e) => setSelectedExamId(e.target.value)}
-              >
-                {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
-            </div>
-
-            {/* 2. Class */}
-            <div className="relative group">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">2. Select Class</label>
-              <select 
-                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
-                value={selectedClassId}
-                onChange={(e) => setSelectedClassId(e.target.value)}
-              >
-                <option value="">All Classes</option>
-                {classes.map(c => <option key={c.id} value={c.id}>{c.className} - {c.section}</option>)}
-              </select>
-            </div>
-
-            {/* 3. Subject */}
-             <div className="relative group">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">3. Select Subject</label>
-              <select 
-                className="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors cursor-pointer"
-                value={selectedSubjectId}
-                onChange={(e) => setSelectedSubjectId(e.target.value)}
-              >
-                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-         </div>
+      {/* Top Filter Bar */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <Calendar size={12} /> 1. Select Exam Term
+           </label>
+           <select 
+             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-slate-700" 
+             value={selectedExamId} 
+             onChange={(e) => setSelectedExamId(e.target.value)}
+           >
+             {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+           </select>
+        </div>
+        <div>
+           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <GraduationCap size={12} /> 2. Class Selection
+           </label>
+           <select 
+             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-slate-700" 
+             value={selectedClassId} 
+             onChange={(e) => setSelectedClassId(e.target.value)}
+           >
+             <option value="">All Students</option>
+             {classes.map(c => <option key={c.id} value={c.id}>{c.className} - {c.section}</option>)}
+           </select>
+        </div>
+        <div>
+           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <BookOpen size={12} /> 3. Subject Module
+           </label>
+           <select 
+             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-indigo-700" 
+             value={selectedSubjectId} 
+             onChange={(e) => setSelectedSubjectId(e.target.value)}
+           >
+             {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+           </select>
+        </div>
       </div>
 
-      {/* Grid */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-         <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-             <h3 className="font-bold text-slate-700">
-                 Marks for <span className="text-indigo-600">{currentSubject?.name}</span>
-             </h3>
-             <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-full text-slate-600">
-                    <Info size={14} />
-                    <span>Subject Total: <strong>{subjectTotalMax}</strong></span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-indigo-50 px-3 py-1.5 rounded-full text-indigo-700 border border-indigo-100">
-                    <CheckCircle size={14} />
-                    <span>Component Max: <strong>{componentMaxMarks}</strong></span>
-                </div>
+      {/* Configuration Header for Max Marks Entry */}
+      <div className="bg-indigo-600 p-6 rounded-2xl text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                  <Info className="text-white" />
+              </div>
+              <div>
+                  <h3 className="font-bold text-lg leading-tight">Define Maximum Marks</h3>
+                  <p className="text-indigo-100 text-xs">Set these once per subject before entering student marks.</p>
+              </div>
+          </div>
+          <div className="flex gap-4 items-center">
+              <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase text-indigo-200 mb-1">Objective Max</span>
+                  <input 
+                    type="number" 
+                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black focus:bg-white focus:text-indigo-600 outline-none transition-all"
+                    value={localMaxObj}
+                    onChange={(e) => setLocalMaxObj(parseInt(e.target.value) || 0)}
+                  />
+              </div>
+              <div className="text-xl opacity-40 font-black mt-4">+</div>
+              <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase text-indigo-200 mb-1">Subjective Max</span>
+                  <input 
+                    type="number" 
+                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black focus:bg-white focus:text-indigo-600 outline-none transition-all"
+                    value={localMaxSubj}
+                    onChange={(e) => setLocalMaxSubj(parseInt(e.target.value) || 0)}
+                  />
+              </div>
+              <div className="text-xl opacity-40 font-black mt-4">=</div>
+              <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase text-indigo-200 mb-1">Total Limit</span>
+                  <div className="w-24 bg-white/20 rounded-xl p-2 text-center text-xl font-black">{localMaxObj + localMaxSubj}</div>
+              </div>
+          </div>
+      </div>
+
+      {/* Entry Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+         {loading && (
+             <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                 <div className="flex flex-col items-center gap-2">
+                     <Loader2 className="animate-spin text-indigo-600" size={32} />
+                     <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Loading Records...</p>
+                 </div>
              </div>
-         </div>
+         )}
          <div className="overflow-x-auto">
             <table className="w-full text-left">
                 <thead>
-                    <tr className="bg-white text-slate-600 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
-                        <th className="px-6 py-4 w-64">Student</th>
-                        <th className="px-4 py-4 w-32">Objective</th>
-                        <th className="px-4 py-4 w-32">Subjective</th>
-                        <th className="px-4 py-4 w-24">Total</th>
-                        <th className="px-4 py-4 w-24">Grade</th>
-                        <th className="px-4 py-4">Status</th>
+                    <tr className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-widest border-b border-slate-200">
+                        <th className="px-6 py-4">Student Information</th>
+                        <th className="px-6 py-4 text-center">Obj. Obtained</th>
+                        <th className="px-6 py-4 text-center">Subj. Obtained</th>
+                        <th className="px-6 py-4 text-center">Grand Total</th>
+                        <th className="px-6 py-4 text-center">Result Status</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                    {loading ? (
-                         <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading student list...</td></tr>
-                    ) : filteredStudents.length === 0 ? (
-                         <tr><td colSpan={6} className="p-8 text-center text-slate-500">No students found for selection.</td></tr>
+                    {filteredStudents.length === 0 ? (
+                      <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic font-medium">No students found for this class.</td></tr>
                     ) : (
-                        filteredStudents.map(student => {
-                            // Ensure records exist for rendering even if not yet in state
-                            const studentRecords = marksData[student.id] || { 
-                                Objective: createEmptyRecord(student.id, 'Objective'), 
-                                Subjective: createEmptyRecord(student.id, 'Subjective') 
-                            };
-                            
-                            const objMark = studentRecords.Objective.obtainedMarks || 0;
-                            const subjMark = studentRecords.Subjective.obtainedMarks || 0;
-                            const total = objMark + subjMark;
-                            const totalGrade = calculateGrade(total, subjectTotalMax);
+                      filteredStudents.map(student => {
+                        const record = marksData[student.id] || createEmptyRecord(student.id);
+                        const totalObtained = (record.objMarks || 0) + (record.subMarks || 0);
+                        const totalMax = localMaxObj + localMaxSubj;
+                        const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+                        const isPass = percentage >= 33;
+                        
+                        const isObjInvalid = (record.objMarks || 0) > localMaxObj;
+                        const isSubInvalid = (record.subMarks || 0) > localMaxSubj;
 
-                            const isObjOver = objMark > componentMaxMarks;
-                            const isSubjOver = subjMark > componentMaxMarks;
-
-                            return (
-                                <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
-                                                <img src={student.avatarUrl} alt="" className="w-full h-full object-cover" />
-                                            </div>
-                                            <div>
-                                                <div className="font-medium text-slate-800 text-sm">{student.fullName}</div>
-                                                <div className="text-xs text-slate-500">{student.rollNumber}</div>
-                                                <div className="text-[10px] text-slate-400">{student.className}-{student.section}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    
-                                    {/* Objective Input */}
-                                    <td className="px-4 py-3">
-                                        <div className="relative">
-                                            <input 
-                                                type="number" 
-                                                min="0"
-                                                max={componentMaxMarks}
-                                                className={clsx(
-                                                    "w-full p-2 border rounded-md text-sm transition-all focus:ring-2 focus:outline-none",
-                                                    isObjOver ? "border-red-500 bg-red-50 focus:ring-red-200 text-red-700" : "border-slate-300 focus:ring-indigo-500"
-                                                )}
-                                                value={studentRecords.Objective.obtainedMarks || ''}
-                                                onChange={(e) => handleMarkChange(student.id, 'Objective', e.target.value)}
-                                                placeholder="0"
-                                            />
-                                            {isObjOver && (
-                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 pointer-events-none">
-                                                    <AlertCircle size={16} />
-                                                </div>
+                        return (
+                            <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                                <td className="px-6 py-4">
+                                    <div className="font-bold text-slate-800 text-sm">{student.fullName}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{student.rollNumber}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="relative max-w-[120px] mx-auto">
+                                        <input 
+                                            type="number" 
+                                            className={clsx(
+                                                "w-full p-2.5 rounded-xl border text-center font-black text-lg outline-none transition-all",
+                                                isObjInvalid 
+                                                  ? "border-red-500 bg-red-50 text-red-600" 
+                                                  : "border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
                                             )}
-                                        </div>
-                                    </td>
-
-                                    {/* Subjective Input */}
-                                    <td className="px-4 py-3">
-                                        <div className="relative">
-                                            <input 
-                                                type="number" 
-                                                min="0"
-                                                max={componentMaxMarks}
-                                                className={clsx(
-                                                    "w-full p-2 border rounded-md text-sm transition-all focus:ring-2 focus:outline-none",
-                                                    isSubjOver ? "border-red-500 bg-red-50 focus:ring-red-200 text-red-700" : "border-slate-300 focus:ring-indigo-500"
-                                                )}
-                                                value={studentRecords.Subjective.obtainedMarks || ''}
-                                                onChange={(e) => handleMarkChange(student.id, 'Subjective', e.target.value)}
-                                                placeholder="0"
-                                            />
-                                            {isSubjOver && (
-                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 pointer-events-none">
-                                                    <AlertCircle size={16} />
-                                                </div>
+                                            value={record.objMarks || ''}
+                                            onChange={(e) => handleScoreUpdate(student.id, 'objMarks', e.target.value)}
+                                            placeholder="0"
+                                        />
+                                        {isObjInvalid && (
+                                            <div className="absolute -top-2 -right-1 text-red-500 bg-white rounded-full"><AlertCircle size={14} /></div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="relative max-w-[120px] mx-auto">
+                                        <input 
+                                            type="number" 
+                                            className={clsx(
+                                                "w-full p-2.5 rounded-xl border text-center font-black text-lg outline-none transition-all",
+                                                isSubInvalid 
+                                                  ? "border-red-500 bg-red-50 text-red-600" 
+                                                  : "border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
                                             )}
-                                        </div>
-                                    </td>
-
-                                    {/* Total Calculation */}
-                                    <td className="px-4 py-3">
-                                        <div className="font-bold text-slate-700 text-sm">{total}</div>
-                                    </td>
-
-                                    {/* Grade Calculation */}
-                                    <td className="px-4 py-3">
-                                        <div className={clsx(
-                                            "font-bold text-xs inline-block px-2 py-0.5 rounded",
-                                            totalGrade === 'F' ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
-                                        )}>
-                                            {totalGrade}
-                                        </div>
-                                    </td>
-
-                                    <td className="px-4 py-3">
-                                        {total > 0 && !isObjOver && !isSubjOver && (
-                                            <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                                                <CheckCircle size={12} /> Ready
-                                            </span>
+                                            value={record.subMarks || ''}
+                                            onChange={(e) => handleScoreUpdate(student.id, 'subMarks', e.target.value)}
+                                            placeholder="0"
+                                        />
+                                        {isSubInvalid && (
+                                            <div className="absolute -top-2 -right-1 text-red-500 bg-white rounded-full"><AlertCircle size={14} /></div>
                                         )}
-                                        {(isObjOver || isSubjOver) && (
-                                             <span className="text-xs text-red-600 font-medium flex items-center gap-1">
-                                                <AlertCircle size={12} /> Invalid
-                                            </span>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <div className="flex flex-col items-center">
+                                      <span className="text-xl font-black text-slate-900 leading-none">{totalObtained}</span>
+                                      <span className="text-[9px] text-slate-400 font-bold mt-1.5 uppercase">of {totalMax} ({percentage.toFixed(1)}%)</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <div className={clsx(
+                                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                        isPass 
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
+                                          : "bg-red-50 text-red-700 border-red-100"
+                                    )}>
+                                        {isPass ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                        {isPass ? 'Pass' : 'Fail'}
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                      })
                     )}
                 </tbody>
             </table>
          </div>
+      </div>
+
+      {/* Pass Criteria Info */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Info size={16} /></div>
+              <p className="text-xs text-slate-600">Calculations follow the standard <b>33% passing criteria</b> across combined components.</p>
+          </div>
+          <div className="text-right">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entry Status</p>
+              <p className="text-xs font-black text-slate-800">{Object.keys(marksData).length} / {filteredStudents.length} Students Record Prepared</p>
+          </div>
       </div>
     </div>
   );

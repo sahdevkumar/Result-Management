@@ -1,5 +1,6 @@
+
 import { supabase } from "../lib/supabase";
-import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType } from "../types";
+import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType, SavedTemplate } from "../types";
 
 // --- Helpers for Data Mapping ---
 
@@ -28,8 +29,20 @@ const mapSubject = (s: any): Subject => ({
   id: s.id,
   name: s.name,
   code: s.code,
+  max_marks: s.max_marks,
+  pass_marks: s.pass_marks,
+  maxMarksObjective: s.max_marks_objective,
+  maxMarksSubjective: s.max_marks_subjective,
+} as any); // Type cast to fix legacy mapping if needed
+
+const mapSubjectRecord = (s: any): Subject => ({
+  id: s.id,
+  name: s.name,
+  code: s.code,
   maxMarks: s.max_marks,
   passMarks: s.pass_marks,
+  maxMarksObjective: s.max_marks_objective,
+  maxMarksSubjective: s.max_marks_subjective,
 });
 
 const mapClass = (c: any): SchoolClass => ({
@@ -48,8 +61,11 @@ const mapMark = (m: any): MarkRecord => ({
   studentId: m.student_id,
   examId: m.exam_id,
   subjectId: m.subject_id,
-  assessmentType: (m.assessment_type as AssessmentType) || 'Subjective',
-  obtainedMarks: m.obtained_marks || 0,
+  objMarks: Number(m.obj_marks) || 0,
+  objMaxMarks: Number(m.obj_max_marks) || 0,
+  subMarks: Number(m.sub_marks) || 0,
+  subMaxMarks: Number(m.sub_max_marks) || 0,
+  examDate: m.exam_date || new Date().toISOString().split('T')[0],
   grade: m.grade || 'F',
   remarks: m.remarks || '',
   attended: m.attended ?? true,
@@ -67,25 +83,76 @@ export const DataService = {
     }
   },
 
+  getSchoolInfo: async () => {
+    const { data, error } = await supabase.from('school_config').select('*').eq('id', 1).single();
+    if (error || !data) {
+      return { name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '' };
+    }
+    return {
+      name: data.name,
+      tagline: data.tagline,
+      logo: data.logo_url,
+      watermark: data.watermark_url
+    };
+  },
+
+  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string }) => {
+    const dbRecord = {
+      id: 1, 
+      name: info.name,
+      tagline: info.tagline,
+      logo_url: info.logo,
+      watermark_url: info.watermark,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from('school_config').upsert(dbRecord, { onConflict: 'id' });
+    if (error) throw new Error(error.message || "Failed to update school info");
+  },
+
+  getTemplates: async (): Promise<SavedTemplate[]> => {
+    const { data, error } = await supabase.from('templates').select('*').order('created_at', { ascending: false });
+    if (error) return [];
+    return (data || []).map(t => ({
+      id: t.id,
+      name: t.name,
+      elements: t.elements,
+      width: t.width,
+      height: t.height,
+      createdAt: new Date(t.created_at).toLocaleDateString()
+    }));
+  },
+
+  saveTemplate: async (template: Omit<SavedTemplate, 'createdAt'>) => {
+    const dbRecord = {
+      id: template.id,
+      name: template.name,
+      elements: template.elements,
+      width: template.width,
+      height: template.height
+    };
+    const { error } = await supabase.from('templates').upsert(dbRecord, { onConflict: 'id' });
+    if (error) throw new Error(error.message || "Failed to save template");
+  },
+
+  deleteTemplate: async (id: string) => {
+    const { error } = await supabase.from('templates').delete().eq('id', id);
+    if (error) throw new Error(error.message || "Failed to delete template");
+  },
+
   getStudents: async (): Promise<Student[]> => {
     const { data, error } = await supabase.from('students').select('*').order('roll_number');
-    if (error) {
-      console.error('Error fetching students:', JSON.stringify(error, null, 2));
-      return [];
-    }
+    if (error) return [];
     return (data || []).map(mapStudent);
   },
 
   deleteStudent: async (id: string): Promise<void> => {
-    const { error: marksError } = await supabase.from('marks').delete().eq('student_id', id);
-    if (marksError) throw new Error(`Failed to delete student marks: ${marksError.message}`);
-
+    await supabase.from('marks').delete().eq('student_id', id);
     const { error } = await supabase.from('students').delete().eq('id', id);
-    if (error) throw new Error(`Failed to delete student: ${error.message}`);
+    if (error) throw new Error(error.message || "Failed to delete student");
   },
 
   updateStudent: async (student: Student): Promise<void> => {
-    const dbRecord = {
+    const { error } = await supabase.from('students').update({
       full_name: student.fullName,
       class_name: student.className,
       section: student.section,
@@ -93,83 +160,117 @@ export const DataService = {
       guardian_name: student.guardianName,
       status: student.status,
       avatar_url: student.avatarUrl
-    };
+    }).eq('id', student.id);
+    if (error) throw new Error(error.message || "Failed to update student");
+  },
 
-    const { error } = await supabase.from('students').update(dbRecord).eq('id', student.id);
-    if (error) throw error;
+  addStudent: async (student: Omit<Student, 'id' | 'rollNumber'>): Promise<void> => {
+    const { data: lastStudent } = await supabase.from('students').select('roll_number').order('roll_number', { ascending: false }).limit(1).maybeSingle();
+    let nextRoll = 'ACS001';
+    if (lastStudent) {
+        const num = parseInt(lastStudent.roll_number.replace(/\D/g, '')) || 0;
+        nextRoll = `ACS${String(num + 1).padStart(3, '0')}`;
+    }
+    const { error } = await supabase.from('students').insert({
+      full_name: student.fullName,
+      roll_number: nextRoll,
+      class_name: student.className,
+      section: student.section,
+      contact_number: student.contactNumber,
+      guardian_name: student.guardianName,
+      status: student.status,
+      avatar_url: student.avatarUrl
+    });
+    if (error) throw new Error(error.message || "Failed to add student");
+  },
+
+  bulkAddStudents: async (students: Omit<Student, 'id' | 'rollNumber'>[]): Promise<void> => {
+    const { data: lastStudent } = await supabase.from('students').select('roll_number').order('roll_number', { ascending: false }).limit(1).maybeSingle();
+    let startNum = 0;
+    if (lastStudent) startNum = parseInt(lastStudent.roll_number.replace(/\D/g, '')) || 0;
+
+    const records = students.map((s, idx) => ({
+      full_name: s.fullName,
+      roll_number: `ACS${String(startNum + idx + 1).padStart(3, '0')}`,
+      class_name: s.className,
+      section: s.section,
+      contact_number: s.contactNumber,
+      guardian_name: s.guardianName,
+      status: s.status,
+      avatar_url: s.avatarUrl
+    }));
+    const { error } = await supabase.from('students').insert(records);
+    if (error) throw new Error(error.message || "Failed to bulk add students");
   },
 
   getExams: async (): Promise<Exam[]> => {
-    const { data: examsData, error: examsError } = await supabase.from('exams').select('*').order('start_date', { ascending: true }); // Ascending for Score Card order
-    if (examsError) return [];
+    const { data, error } = await supabase.from('exams').select('*').order('start_date');
+    if (error) return [];
     const subjects = await DataService.getSubjects();
-    return (examsData || []).map(e => mapExam(e, subjects));
+    return (data || []).map(e => mapExam(e, subjects));
   },
 
   addExam: async (exam: Partial<Exam>): Promise<void> => {
-    const currentYear = new Date().getFullYear().toString();
-    const dbRecord = {
+    const { error } = await supabase.from('exams').insert({
       name: exam.name,
-      academic_year: currentYear,
       term: exam.type,
       start_date: exam.date,
-      status: exam.status
-    };
-    const { error } = await supabase.from('exams').insert(dbRecord);
-    if (error) throw error;
+      status: exam.status,
+      academic_year: new Date().getFullYear().toString()
+    });
+    if (error) throw new Error(error.message || "Failed to add exam");
   },
 
   updateExam: async (exam: Exam): Promise<void> => {
-    const dbRecord = {
+    const { error } = await supabase.from('exams').update({
       name: exam.name,
       term: exam.type,
       start_date: exam.date,
       status: exam.status
-    };
-    const { error } = await supabase.from('exams').update(dbRecord).eq('id', exam.id);
-    if (error) throw error;
+    }).eq('id', exam.id);
+    if (error) throw new Error(error.message || "Failed to update exam");
   },
 
   deleteExam: async (id: string): Promise<void> => {
-    const { error: marksError } = await supabase.from('marks').delete().eq('exam_id', id);
-    if (marksError) throw new Error(`Failed to delete exam marks: ${marksError.message}`);
+    await supabase.from('marks').delete().eq('exam_id', id);
     const { error } = await supabase.from('exams').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw new Error(error.message || "Failed to delete exam");
   },
 
   getSubjects: async (): Promise<Subject[]> => {
     const { data, error } = await supabase.from('subjects').select('*').order('name');
     if (error) return [];
-    return (data || []).map(mapSubject);
+    return (data || []).map(mapSubjectRecord);
   },
 
-  addSubject: async (subject: Partial<Subject>): Promise<void> => {
-    const dbRecord = {
-      name: subject.name,
-      code: subject.code,
-      max_marks: subject.maxMarks,
-      pass_marks: subject.passMarks
-    };
-    const { error } = await supabase.from('subjects').insert(dbRecord);
-    if (error) throw error;
+  addSubject: async (sub: Partial<Subject>): Promise<void> => {
+    const { error } = await supabase.from('subjects').insert({
+      name: sub.name,
+      code: sub.code,
+      max_marks: sub.maxMarks,
+      pass_marks: sub.passMarks,
+      max_marks_objective: sub.maxMarksObjective,
+      max_marks_subjective: sub.maxMarksSubjective
+    });
+    if (error) throw new Error(error.message || "Failed to add subject");
   },
 
-  updateSubject: async (subject: Subject): Promise<void> => {
-    const dbRecord = {
-      name: subject.name,
-      code: subject.code,
-      max_marks: subject.maxMarks,
-      pass_marks: subject.passMarks
-    };
-    const { error } = await supabase.from('subjects').update(dbRecord).eq('id', subject.id);
-    if (error) throw error;
+  updateSubject: async (sub: Subject): Promise<void> => {
+    const { error } = await supabase.from('subjects').update({
+      name: sub.name,
+      code: sub.code,
+      max_marks: sub.maxMarks,
+      pass_marks: sub.passMarks,
+      max_marks_objective: sub.maxMarksObjective,
+      max_marks_subjective: sub.maxMarksSubjective
+    }).eq('id', sub.id);
+    if (error) throw new Error(error.message || "Failed to update subject");
   },
 
   deleteSubject: async (id: string): Promise<void> => {
-    const { error: marksError } = await supabase.from('marks').delete().eq('subject_id', id);
-    if (marksError) throw new Error(`Failed to delete subject marks: ${marksError.message}`);
+    await supabase.from('marks').delete().eq('subject_id', id);
     const { error } = await supabase.from('subjects').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw new Error(error.message || "Failed to delete subject");
   },
 
   getClasses: async (): Promise<SchoolClass[]> => {
@@ -179,20 +280,18 @@ export const DataService = {
   },
 
   addClass: async (cls: Partial<SchoolClass>): Promise<void> => {
-    const dbRecord = { name: cls.className, section: cls.section };
-    const { error } = await supabase.from('classes').insert(dbRecord);
-    if (error) throw error;
+    const { error } = await supabase.from('classes').insert({ name: cls.className, section: cls.section });
+    if (error) throw new Error(error.message || "Failed to add class");
   },
 
   updateClass: async (cls: SchoolClass): Promise<void> => {
-    const dbRecord = { name: cls.className, section: cls.section };
-    const { error } = await supabase.from('classes').update(dbRecord).eq('id', cls.id);
-    if (error) throw error;
+    const { error } = await supabase.from('classes').update({ name: cls.className, section: cls.section }).eq('id', cls.id);
+    if (error) throw new Error(error.message || "Failed to update class");
   },
 
   deleteClass: async (id: string): Promise<void> => {
     const { error } = await supabase.from('classes').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw new Error(error.message || "Failed to delete class");
   },
 
   getExamTypes: async (): Promise<ExamType[]> => {
@@ -201,25 +300,23 @@ export const DataService = {
     return (data || []).map(mapExamType);
   },
 
-  addExamType: async (type: Partial<ExamType>): Promise<void> => {
-    const { error } = await supabase.from('exam_types').insert({ name: type.name, description: type.description });
-    if (error) throw error;
+  addExamType: async (t: Partial<ExamType>): Promise<void> => {
+    const { error } = await supabase.from('exam_types').insert({ name: t.name, description: t.description });
+    if (error) throw new Error(error.message || "Failed to add exam type");
   },
 
-  updateExamType: async (type: ExamType): Promise<void> => {
-    const { error } = await supabase.from('exam_types').update({ name: type.name, description: type.description }).eq('id', type.id);
-    if (error) throw error;
+  updateExamType: async (t: ExamType): Promise<void> => {
+    const { error } = await supabase.from('exam_types').update({ name: t.name, description: t.description }).eq('id', t.id);
+    if (error) throw new Error(error.message || "Failed to update exam type");
   },
 
   deleteExamType: async (id: string): Promise<void> => {
     const { error } = await supabase.from('exam_types').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw new Error(error.message || "Failed to delete exam type");
   },
 
-  getMarks: async (examId: string, subjectId: string, assessmentType?: AssessmentType): Promise<MarkRecord[]> => {
-    let query = supabase.from('marks').select('*').eq('exam_id', examId).eq('subject_id', subjectId);
-    if (assessmentType) query = query.eq('assessment_type', assessmentType);
-    const { data, error } = await query;
+  getMarks: async (examId: string, subjectId: string): Promise<MarkRecord[]> => {
+    const { data, error } = await supabase.from('marks').select('*').eq('exam_id', examId).eq('subject_id', subjectId);
     if (error) return [];
     return (data || []).map(mapMark);
   },
@@ -230,64 +327,66 @@ export const DataService = {
     return (data || []).map(mapMark);
   },
 
-  // New method to fetch ALL marks for a student across all exams
   getStudentHistory: async (studentId: string): Promise<MarkRecord[]> => {
-    const { data, error } = await supabase
-      .from('marks')
-      .select('*')
-      .eq('student_id', studentId);
-      
-    if (error) {
-      console.error('Error fetching student history:', JSON.stringify(error, null, 2));
-      return [];
-    }
+    const { data, error } = await supabase.from('marks').select('*').eq('student_id', studentId);
+    if (error) return [];
     return (data || []).map(mapMark);
   },
 
-  updateMark: async (record: MarkRecord): Promise<void> => {
+  updateMark: async (m: MarkRecord): Promise<void> => {
     const dbRecord = {
-      student_id: record.studentId,
-      exam_id: record.examId,
-      subject_id: record.subjectId,
-      assessment_type: record.assessmentType,
-      obtained_marks: record.obtainedMarks,
-      grade: record.grade,
-      remarks: record.remarks,
-      attended: record.attended,
+      student_id: m.studentId,
+      exam_id: m.examId,
+      subject_id: m.subjectId,
+      obj_marks: m.objMarks,
+      obj_max_marks: m.objMaxMarks,
+      sub_marks: m.subMarks,
+      sub_max_marks: m.subMaxMarks,
+      exam_date: m.examDate,
+      grade: m.grade,
+      remarks: m.remarks,
+      attended: m.attended,
       updated_at: new Date().toISOString()
     };
-    const { error } = await supabase.from('marks').upsert(dbRecord, { onConflict: 'student_id, exam_id, subject_id, assessment_type' });
-    if (error) throw error;
+    const { error } = await supabase.from('marks').upsert(dbRecord, { onConflict: 'student_id,exam_id,subject_id' });
+    if (error) {
+        console.error("Supabase Marks Upsert Error:", error);
+        throw new Error(error.message || "Failed to upsert marks record");
+    }
   },
 
-  addStudent: async (student: Omit<Student, 'id' | 'rollNumber'>): Promise<void> => {
-    const { data: lastStudent } = await supabase.from('students').select('roll_number').order('roll_number', { ascending: false }).limit(1).single();
-    let nextRoll = 'ACS001';
-    if (lastStudent && lastStudent.roll_number) {
-        const numberPart = parseInt(lastStudent.roll_number.replace(/\D/g, ''), 10);
-        if (!isNaN(numberPart)) nextRoll = `ACS${String(numberPart + 1).padStart(3, '0')}`;
+  bulkUpdateMarks: async (records: MarkRecord[]): Promise<void> => {
+    if (records.length === 0) return;
+    
+    // Safety check for UUIDs
+    const validRecords = records.filter(m => m.studentId && m.examId && m.subjectId);
+    if (validRecords.length === 0) return;
+
+    const dbRecords = validRecords.map(m => ({
+      student_id: m.studentId,
+      exam_id: m.examId,
+      subject_id: m.subjectId,
+      obj_marks: m.objMarks || 0,
+      obj_max_marks: m.objMaxMarks || 0,
+      sub_marks: m.subMarks || 0,
+      sub_max_marks: m.subMaxMarks || 0,
+      exam_date: m.examDate || new Date().toISOString().split('T')[0],
+      grade: m.grade || 'F',
+      remarks: m.remarks || '',
+      attended: m.attended ?? true,
+      updated_at: new Date().toISOString()
+    }));
+    
+    const { error } = await supabase.from('marks').upsert(dbRecords, { onConflict: 'student_id,exam_id,subject_id' });
+    if (error) {
+        console.error("Supabase Bulk Marks Upsert Error Details:", error);
+        throw new Error(error.message || "Database batch operation failed");
     }
-    const dbRecord = {
-      full_name: student.fullName,
-      roll_number: nextRoll,
-      class_name: student.className,
-      section: student.section,
-      contact_number: student.contactNumber,
-      guardian_name: student.guardianName,
-      status: student.status,
-      avatar_url: student.avatarUrl
-    };
-    const { error } = await supabase.from('students').insert(dbRecord);
-    if (error) throw error;
   },
 
   getDashboardStats: async () => {
-      try {
-        const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
-        const { count: examCount } = await supabase.from('exams').select('*', { count: 'exact', head: true });
-        return { totalStudents: studentCount || 0, activeExams: examCount || 0, passRate: 88.4, pending: 3 };
-      } catch (e) {
-          return { totalStudents: 0, activeExams: 0, passRate: 0, pending: 0 };
-      }
+    const { count: s } = await supabase.from('students').select('*', { count: 'exact', head: true });
+    const { count: e } = await supabase.from('exams').select('*', { count: 'exact', head: true });
+    return { totalStudents: s || 0, activeExams: e || 0, passRate: 88.4, pending: 3 };
   }
 };

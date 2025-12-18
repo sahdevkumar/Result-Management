@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
 import { Exam, Subject, Student, MarkRecord, SchoolClass } from '../types';
@@ -66,9 +67,8 @@ export const TeachersRemarks: React.FC = () => {
   const loadMarks = async () => {
     setLoading(true);
     try {
-      // Fetch marks for 'Subjective' assessment type to store remarks
-      // We use Subjective as the default container for subject remarks
-      const records = await DataService.getMarks(selectedExamId, selectedSubjectId, 'Subjective');
+      // Fix: Fetch marks without unnecessary 3rd argument as MarkRecord is unified
+      const records = await DataService.getMarks(selectedExamId, selectedSubjectId);
       const marksMap: Record<string, MarkRecord> = {};
       records.forEach(r => {
         marksMap[r.studentId] = r;
@@ -82,14 +82,19 @@ export const TeachersRemarks: React.FC = () => {
   };
 
   const handleRemarkChange = (studentId: string, value: string) => {
+    // Fix: Fallback object must match MarkRecord interface (no assessmentType or obtainedMarks)
     const currentMark = marksData[studentId] || {
       studentId,
       examId: selectedExamId,
       subjectId: selectedSubjectId,
-      assessmentType: 'Subjective',
-      obtainedMarks: 0,
+      objMarks: 0,
+      objMaxMarks: 0,
+      subMarks: 0,
+      subMaxMarks: 0,
+      examDate: new Date().toISOString().split('T')[0],
       grade: 'F',
-      attended: true
+      attended: true,
+      remarks: ''
     };
 
     const updatedMark = {

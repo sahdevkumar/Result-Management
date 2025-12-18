@@ -30,6 +30,8 @@ export interface Subject {
   code: string;
   maxMarks: number;
   passMarks: number;
+  maxMarksObjective?: number;
+  maxMarksSubjective?: number;
 }
 
 export interface SchoolClass {
@@ -47,8 +49,8 @@ export interface ExamType {
 export interface Exam {
   id: string;
   name: string;
-  type: string; // Changed from term
-  date: string; // Changed from start/end date range
+  type: string;
+  date: string;
   status: ExamStatus;
   subjects: Subject[];
 }
@@ -59,8 +61,11 @@ export interface MarkRecord {
   studentId: string;
   examId: string;
   subjectId: string;
-  assessmentType: AssessmentType; // New field
-  obtainedMarks: number;
+  objMarks: number;
+  objMaxMarks: number;
+  subMarks: number;
+  subMaxMarks: number;
+  examDate: string;
   grade: string;
   remarks?: string;
   attended: boolean;

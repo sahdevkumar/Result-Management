@@ -46,8 +46,7 @@ const Layout: React.FC = () => {
   }, []);
 
   return (
-    // Added print-reset to break out of flexbox layout during print
-    <div className="flex min-h-screen bg-slate-50/50 font-sans print:bg-white print-reset">
+    <div className="flex min-h-screen bg-slate-50/50 font-sans print:bg-white print:block print:min-h-0 print-reset">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} isOnline={isOnline} />
       
       {/* Mobile Header */}
@@ -74,9 +73,8 @@ const Layout: React.FC = () => {
 
       <main className={clsx(
         "flex-1 p-4 lg:p-8 overflow-y-auto h-screen transition-all duration-300",
-        "lg:ml-72", // Matches new sidebar width
-        "pt-20 lg:pt-8", // Mobile top padding
-        // Print Overrides: Reset positioning, sizing, and scrolling
+        "lg:ml-72", 
+        "pt-20 lg:pt-8", 
         "print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:static print-reset"
       )}>
         <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0">

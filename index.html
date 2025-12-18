@@ -10,6 +10,7 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      
       @media print {
         @page {
             margin: 0;
@@ -37,28 +38,30 @@
         /* Specific fix for the main content area margin set in App.tsx */
         main {
             margin-left: 0 !important;
+            padding: 0 !important;
         }
 
         /* Ensure high-quality printing of graphics and colors */
         * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            box-shadow: none !important; /* Remove screen shadows for crisp print */
+            box-shadow: none !important; 
         }
         
-        /* Force override inline styles for printing */
-        .print-force-full {
-            max-width: none !important;
-            width: 100% !important;
-            min-height: 0 !important;
-            height: auto !important;
-            margin: 0 !important;
+        /* Force container visibility */
+        .print-force-visible {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
 
         /* Hide scrollbars */
         ::-webkit-scrollbar {
             display: none;
         }
+
+        /* Prevent background colors from being stripped */
+        .print-bg-indigo { background-color: #1e1b4b !important; color: white !important; }
       }
     </style>
 <script type="importmap">

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Printer, Loader2, CheckSquare, Square, FileText, Users, Search 
+  Printer, Loader2, CheckSquare, Square, FileText, Users, Search, Maximize2, Layout
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DataService } from '../services/dataService';
@@ -8,6 +9,8 @@ import { Student, Exam, SchoolClass, Subject, SavedTemplate, DesignElement } fro
 import clsx from 'clsx';
 
 type PrintTab = 'single' | 'bulk';
+type PaperSize = 'A4' | 'Letter';
+type Orientation = 'portrait' | 'landscape';
 
 export const PrintReport: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PrintTab>('single');
@@ -26,6 +29,10 @@ export const PrintReport: React.FC = () => {
   const [examId, setExamId] = useState('');
   const [classId, setClassId] = useState('');
   const [studentId, setStudentId] = useState(''); // For Single Print
+  
+  // Paper Settings
+  const [paperSize, setPaperSize] = useState<PaperSize>('A4');
+  const [orientation, setOrientation] = useState<Orientation>('portrait');
 
   // Bulk Selection
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -33,7 +40,6 @@ export const PrintReport: React.FC = () => {
   
   // Printing State
   const [isPrinting, setIsPrinting] = useState(false);
-  const [printPages, setPrintPages] = useState<{studentId: string, elements: DesignElement[]}[]>([]);
   
   // Preview State (Single)
   const [previewElements, setPreviewElements] = useState<DesignElement[]>([]);
@@ -44,28 +50,25 @@ export const PrintReport: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [e, c, s, sub] = await Promise.all([
+        const [e, c, s, sub, tmpls] = await Promise.all([
           DataService.getExams(),
           DataService.getClasses(),
           DataService.getStudents(),
-          DataService.getSubjects()
+          DataService.getSubjects(),
+          DataService.getTemplates()
         ]);
         setExams(e);
         setClasses(c);
         setStudents(s);
         setSubjects(sub);
+        setSavedTemplates(tmpls);
         
-        // Load templates
-        const saved = localStorage.getItem('educore_templates');
-        if (saved) {
-            setSavedTemplates(JSON.parse(saved));
-        }
-
         // Defaults
         if (e.length > 0) setExamId(e[0].id);
         if (c.length > 0) setClassId(c[0].id);
+        if (tmpls.length > 0) setTemplateId(tmpls[0].id);
       } catch (err) {
-        showToast("Failed to load data", 'error');
+        showToast("Failed to load database data", 'error');
       } finally {
         setLoading(false);
       }
@@ -96,400 +99,350 @@ export const PrintReport: React.FC = () => {
     }
   }, [classId, students, classes, activeTab]);
 
+  // Dimension Helper
+  const getPageDimensions = () => {
+    let w = 794; // A4 approx px at 96dpi
+    let h = 1123;
+    if (paperSize === 'Letter') {
+      w = 816; // 8.5in
+      h = 1056; // 11in
+    }
+    return orientation === 'landscape' ? { width: h, height: w } : { width: w, height: h };
+  };
+
+  const generatePreview = () => {
+    const template = savedTemplates.find(t => t.id === templateId);
+    const student = students.find(s => s.id === studentId);
+    const exam = exams.find(e => e.id === examId);
+
+    if (!template || !student || !exam) {
+      setPreviewElements([]);
+      return;
+    }
+
+    const dims = getPageDimensions();
+    setPreviewSize(dims);
+
+    const mappedElements = template.elements.map(el => {
+      if (el.type === 'text') {
+        let content = el.content;
+        content = content.replace(/{{name}}/g, student.fullName);
+        content = content.replace(/{{roll}}/g, student.rollNumber);
+        content = content.replace(/{{class}}/g, student.className);
+        content = content.replace(/{{section}}/g, student.section);
+        content = content.replace(/{{exam}}/g, exam.name);
+        return { ...el, content };
+      }
+      return el;
+    });
+
+    setPreviewElements(mappedElements);
+  };
+
   // --- Live Preview for Single Print ---
   useEffect(() => {
     if (activeTab === 'single' && templateId && examId && studentId) {
         generatePreview();
     }
-  }, [activeTab, templateId, examId, studentId]);
+  }, [activeTab, templateId, examId, studentId, paperSize, orientation, savedTemplates, students, exams]);
 
-  const hydrateElements = async (elements: DesignElement[], s: Student, exam: Exam) => {
-    // Fetch marks
-    const marks = await DataService.getStudentMarks(s.id, exam.id);
-    
-    // Consolidate Marks (Obj + Subj)
-    const consolidatedMarks: Record<string, { total: number, grade: string }> = {};
-    marks.forEach(m => {
-        if(!consolidatedMarks[m.subjectId]) {
-            consolidatedMarks[m.subjectId] = { total: 0, grade: '-' };
-        }
-        consolidatedMarks[m.subjectId].total += m.obtainedMarks;
-        // Simplified grade logic, ideally fetched from subject definition
-    });
-
-    // Determine final grade for each subject
-    Object.keys(consolidatedMarks).forEach(sid => {
-        const sub = subjects.find(sb => sb.id === sid);
-        const max = sub?.maxMarks || 100;
-        const total = consolidatedMarks[sid].total;
-        const pct = (total/max)*100;
-        
-        let grade = 'F';
-        if(pct >= 90) grade = 'A+';
-        else if(pct >= 80) grade = 'A';
-        else if(pct >= 70) grade = 'B';
-        else if(pct >= 60) grade = 'C';
-        else if(pct >= 50) grade = 'D';
-        else if(pct >= 40) grade = 'E';
-        consolidatedMarks[sid].grade = grade;
-    });
-
-    const overallTotal = Object.values(consolidatedMarks).reduce((acc, curr) => acc + curr.total, 0);
-    const overallMax = Object.keys(consolidatedMarks).length * 100; // approximation if max not available per record
-    const percentage = overallMax > 0 ? ((overallTotal / overallMax) * 100).toFixed(1) : '0';
-
-    return elements.map(el => {
-        if (el.type !== 'text') return el;
-        
-        let text = el.content;
-        // Variables
-        text = text.replace(/{{name}}/gi, s.fullName);
-        text = text.replace(/{{roll}}/gi, s.rollNumber);
-        text = text.replace(/{{class}}/gi, `${s.className}-${s.section}`);
-        text = text.replace(/{{guardian}}/gi, s.guardianName);
-        text = text.replace(/{{exam}}/gi, exam.name);
-        
-        text = text.replace(/{{total}}/gi, overallTotal.toString());
-        text = text.replace(/{{percentage}}/gi, percentage + '%');
-        
-        // Tables
-        if (text.includes('{{marks_table}}')) {
-            const tableStr = Object.keys(consolidatedMarks).map(sid => {
-                const sub = subjects.find(sb => sb.id === sid);
-                const cm = consolidatedMarks[sid];
-                return `${sub?.name || 'Sub'}: ${cm.total} (${cm.grade})`; 
-            }).join('\n');
-            text = text.replace(/{{marks_table}}/gi, tableStr);
-        } else if (text.includes('{{marks_summary}}')) {
-             const summary = Object.keys(consolidatedMarks).map(sid => {
-                const sub = subjects.find(sb => sb.id === sid);
-                const cm = consolidatedMarks[sid];
-                return `${sub?.code}: ${cm.total}`; 
-            }).join(', ');
-            text = text.replace(/{{marks_summary}}/gi, summary);
-        }
-
-        return { ...el, content: text };
-    });
+  const handlePrint = () => {
+    if (activeTab === 'single' && !studentId) return;
+    if (activeTab === 'bulk' && selectedStudentIds.size === 0) return;
+    window.print();
   };
 
-  const generatePreview = async () => {
-      const tmpl = savedTemplates.find(t => t.id === templateId);
-      const exam = exams.find(e => e.id === examId);
-      const student = students.find(s => s.id === studentId);
-      
-      if (!tmpl || !exam || !student) return;
-      
-      setPreviewSize({ width: tmpl.width, height: tmpl.height });
-      const hydrated = await hydrateElements(tmpl.elements, student, exam);
-      setPreviewElements(hydrated);
-  };
-
-  const handlePrint = async () => {
-    if (!templateId || !examId) {
-        showToast("Select template and exam", 'error');
-        return;
-    }
-
-    const tmpl = savedTemplates.find(t => t.id === templateId);
-    const exam = exams.find(e => e.id === examId);
-    if (!tmpl || !exam) return;
-
-    let targetStudents: Student[] = [];
-    if (activeTab === 'single') {
-        const s = students.find(st => st.id === studentId);
-        if (s) targetStudents = [s];
-    } else {
-        targetStudents = filteredStudents.filter(s => selectedStudentIds.has(s.id));
-    }
-
-    if (targetStudents.length === 0) {
-        showToast("No students selected", 'error');
-        return;
-    }
-
-    setIsPrinting(true);
-    setPreviewSize({ width: tmpl.width, height: tmpl.height });
-
-    try {
-        const pages = [];
-        for (const s of targetStudents) {
-            const elements = await hydrateElements(tmpl.elements, s, exam);
-            pages.push({ studentId: s.id, elements });
-        }
-        setPrintPages(pages);
-
-        // Allow DOM to update
-        requestAnimationFrame(() => {
-           setTimeout(() => {
-             window.print();
-             setIsPrinting(false);
-             // Optional: Keep pages for a moment to avoid glitch, but normally clearing is fine
-             setPrintPages([]);
-           }, 500);
-        });
-    } catch (e) {
-        showToast("Error generating print pages", 'error');
-        setIsPrinting(false);
-    }
+  const toggleStudentSelection = (id: string) => {
+    const next = new Set(selectedStudentIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedStudentIds(next);
   };
 
   const toggleSelectAll = () => {
     if (selectedStudentIds.size === filteredStudents.length) {
-        setSelectedStudentIds(new Set());
+      setSelectedStudentIds(new Set());
     } else {
-        setSelectedStudentIds(new Set(filteredStudents.map(s => s.id)));
+      setSelectedStudentIds(new Set(filteredStudents.map(s => s.id)));
     }
-  };
-
-  const toggleStudentSelection = (id: string) => {
-    const newSet = new Set(selectedStudentIds);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedStudentIds(newSet);
   };
 
   return (
     <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-800 no-print">Print Reports</h1>
-        
-        <div className="flex flex-col lg:flex-row gap-6 no-print">
-            {/* Sidebar Configuration */}
-            <div className="lg:w-80 space-y-4">
-                {/* Tabs */}
-                <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-                    <button 
-                        onClick={() => setActiveTab('single')}
-                        className={clsx("flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'single' ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-700")}
-                    >
-                        <FileText size={16} /> Print
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('bulk')}
-                        className={clsx("flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'bulk' ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-700")}
-                    >
-                        <Users size={16} /> Bulk Print
-                    </button>
-                </div>
+      {/* Dynamic Print Styles */}
+      <style>
+        {`
+          @media print {
+            @page {
+              size: ${paperSize} ${orientation};
+              margin: 0;
+            }
+          }
+        `}
+      </style>
 
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Configuration</h3>
-                    
-                    <div>
-                        <label className="block text-[10px] text-slate-400 mb-1">Template</label>
-                        <select 
-                            className="w-full p-2 border border-slate-300 rounded text-sm"
-                            value={templateId}
-                            onChange={(e) => setTemplateId(e.target.value)}
-                        >
-                            <option value="">Select Template</option>
-                            {savedTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-[10px] text-slate-400 mb-1">Exam</label>
-                        <select 
-                            className="w-full p-2 border border-slate-300 rounded text-sm"
-                            value={examId}
-                            onChange={(e) => setExamId(e.target.value)}
-                        >
-                             <option value="">Select Exam</option>
-                            {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-[10px] text-slate-400 mb-1">Class</label>
-                        <select 
-                            className="w-full p-2 border border-slate-300 rounded text-sm"
-                            value={classId}
-                            onChange={(e) => setClassId(e.target.value)}
-                        >
-                            <option value="">Select Class</option>
-                            {classes.map(c => <option key={c.id} value={c.id}>{c.className} - {c.section}</option>)}
-                        </select>
-                    </div>
-
-                    {activeTab === 'single' && (
-                        <div>
-                            <label className="block text-[10px] text-slate-400 mb-1">Student</label>
-                            <select 
-                                className="w-full p-2 border border-slate-300 rounded text-sm"
-                                value={studentId}
-                                onChange={(e) => setStudentId(e.target.value)}
-                            >
-                                <option value="">Select Student</option>
-                                {filteredStudents.map(s => <option key={s.id} value={s.id}>{s.fullName} ({s.rollNumber})</option>)}
-                            </select>
-                        </div>
-                    )}
-                </div>
-
-                <button 
-                    onClick={handlePrint}
-                    disabled={isPrinting || !templateId || !examId || (activeTab === 'single' ? !studentId : selectedStudentIds.size === 0)}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-md shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                    {isPrinting ? <Loader2 className="animate-spin" size={18} /> : <Printer size={18} />}
-                    {isPrinting ? 'Generating...' : activeTab === 'single' ? 'Print Report' : `Print Selected (${selectedStudentIds.size})`}
-                </button>
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 bg-slate-100 rounded-xl border border-slate-200 p-4 lg:p-8 overflow-auto min-h-[600px] flex justify-center items-start">
-                
-                {activeTab === 'single' ? (
-                    templateId && studentId ? (
-                        <div 
-                            className="bg-white shadow-2xl origin-top transition-transform"
-                            style={{
-                                width: `${previewSize.width}px`,
-                                height: `${previewSize.height}px`,
-                                transform: 'scale(0.65)',
-                                position: 'relative'
-                            }}
-                        >
-                            {previewElements.map(el => (
-                                <div
-                                    key={el.id}
-                                    style={{
-                                        position: 'absolute',
-                                        left: el.x,
-                                        top: el.y,
-                                        width: el.width,
-                                        height: el.height,
-                                        zIndex: el.type === 'watermark' ? 0 : 1,
-                                        opacity: el.style.opacity
-                                    }}
-                                >
-                                    {el.type === 'text' ? (
-                                        <div style={{
-                                            fontSize: `${el.style.fontSize}px`,
-                                            fontFamily: el.style.fontFamily,
-                                            color: el.style.color,
-                                            fontWeight: el.style.fontWeight,
-                                            fontStyle: el.style.fontStyle,
-                                            textDecoration: el.style.textDecoration,
-                                            textAlign: el.style.textAlign as any,
-                                            lineHeight: el.style.lineHeight,
-                                            letterSpacing: `${el.style.letterSpacing}px`,
-                                            whiteSpace: 'pre-wrap',
-                                            width: '100%',
-                                            height: '100%',
-                                        }}>
-                                            {el.content}
-                                        </div>
-                                    ) : (
-                                        <img src={el.content} className="w-full h-full object-contain" alt="" />
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                            <Printer size={48} className="mb-4 opacity-50" />
-                            <p>Select configuration to preview report</p>
-                        </div>
-                    )
-                ) : (
-                    // BULK TAB LIST
-                    <div className="w-full bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden self-start">
-                         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-bold text-slate-700">Student List ({filteredStudents.length})</h3>
-                            <button onClick={toggleSelectAll} className="text-xs text-blue-600 font-medium hover:underline">
-                                {selectedStudentIds.size === filteredStudents.length ? 'Deselect All' : 'Select All'}
-                            </button>
-                         </div>
-                         <div className="max-h-[600px] overflow-y-auto">
-                            {filteredStudents.length === 0 ? (
-                                <p className="p-8 text-center text-slate-400">No students found.</p>
-                            ) : (
-                                filteredStudents.map(s => (
-                                    <div 
-                                        key={s.id} 
-                                        onClick={() => toggleStudentSelection(s.id)}
-                                        className="flex items-center gap-3 p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer"
-                                    >
-                                        {selectedStudentIds.has(s.id) ? 
-                                            <CheckSquare size={18} className="text-blue-600" /> : 
-                                            <Square size={18} className="text-slate-300" />
-                                        }
-                                        <div>
-                                            <p className="font-medium text-sm text-slate-800">{s.fullName}</p>
-                                            <p className="text-xs text-slate-400">{s.rollNumber}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                         </div>
-                    </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Print Center</h1>
+          <p className="text-slate-500 text-sm">Generate and print reports using custom templates</p>
+        </div>
+        <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+            <button 
+                onClick={() => setActiveTab('single')} 
+                className={clsx(
+                    "px-4 py-2 text-sm font-medium rounded-md transition-all",
+                    activeTab === 'single' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"
                 )}
+            >
+                Single Print
+            </button>
+            <button 
+                onClick={() => setActiveTab('bulk')} 
+                className={clsx(
+                    "px-4 py-2 text-sm font-medium rounded-md transition-all",
+                    activeTab === 'bulk' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"
+                )}
+            >
+                Bulk Print
+            </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 no-print">
+        {/* Configuration Sidebar */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">1. Select Template</label>
+              <select 
+                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+              >
+                {savedTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                {savedTemplates.length === 0 && <option value="">No templates found</option>}
+              </select>
             </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">2. Paper Settings</label>
+              <div className="grid grid-cols-2 gap-2">
+                <select 
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-slate-50"
+                  value={paperSize}
+                  onChange={(e) => setPaperSize(e.target.value as PaperSize)}
+                >
+                  <option value="A4">A4 Size</option>
+                  <option value="Letter">Letter Size</option>
+                </select>
+                <select 
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-slate-50"
+                  value={orientation}
+                  onChange={(e) => setOrientation(e.target.value as Orientation)}
+                >
+                  <option value="portrait">Portrait</option>
+                  <option value="landscape">Landscape</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">3. Select Exam</label>
+              <select 
+                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                value={examId}
+                onChange={(e) => setExamId(e.target.value)}
+              >
+                {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">4. Select Class</label>
+              <select 
+                className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                value={classId}
+                onChange={(e) => setClassId(e.target.value)}
+              >
+                <option value="">Choose Class</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.className} - {c.section}</option>)}
+              </select>
+            </div>
+
+            {activeTab === 'single' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">5. Select Student</label>
+                <select 
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  disabled={!classId}
+                >
+                  <option value="">Choose Student</option>
+                  {filteredStudents.map(s => <option key={s.id} value={s.id}>{s.fullName} ({s.rollNumber})</option>)}
+                </select>
+              </div>
+            )}
+            
+            <button 
+              onClick={handlePrint}
+              disabled={loading || (activeTab === 'single' ? !studentId : selectedStudentIds.size === 0)}
+              className="w-full bg-slate-800 hover:bg-black text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 mt-4 shadow-lg shadow-slate-200"
+            >
+              <Printer size={18} />
+              {activeTab === 'single' ? 'Print Report' : `Print (${selectedStudentIds.size}) Reports`}
+            </button>
+          </div>
         </div>
 
-        {/* HIDDEN PRINT CONTAINER - Only visible during print */}
-        <div className="hidden print:block absolute top-0 left-0 w-full z-[9999] bg-white">
-            {printPages.map((page, index) => (
-                <div 
-                    key={index} 
-                    className="relative overflow-hidden print-page"
-                    style={{
-                        width: `${previewSize.width}px`,
-                        height: `${previewSize.height}px`,
-                        pageBreakAfter: 'always',
-                        margin: '0 auto' 
-                    }}
-                >
-                    {page.elements.map(el => (
-                        <div
-                            key={el.id}
-                            className="absolute"
-                            style={{
-                                left: el.x,
-                                top: el.y,
-                                width: el.width,
-                                height: el.height,
-                                zIndex: el.type === 'watermark' ? 0 : 1,
-                                opacity: el.style.opacity
-                            }}
-                        >
-                            {el.type === 'text' ? (
-                                <div style={{
-                                    fontSize: `${el.style.fontSize}px`,
-                                    fontFamily: el.style.fontFamily,
-                                    color: el.style.color,
-                                    fontWeight: el.style.fontWeight,
-                                    fontStyle: el.style.fontStyle,
-                                    textDecoration: el.style.textDecoration,
-                                    textAlign: el.style.textAlign as any,
-                                    lineHeight: el.style.lineHeight,
-                                    letterSpacing: `${el.style.letterSpacing}px`,
-                                    whiteSpace: 'pre-wrap',
-                                    width: '100%',
-                                    height: '100%',
-                                }}>
-                                    {el.content}
-                                </div>
-                            ) : (
-                                <img src={el.content} alt="" className="w-full h-full object-contain" />
+        {/* Content Area */}
+        <div className="lg:col-span-3 space-y-6">
+          {activeTab === 'bulk' && classId && (
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm animate-in fade-in duration-300">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        <Users size={18} className="text-indigo-600" />
+                        Select Students for Bulk Printing
+                    </h3>
+                    <button onClick={toggleSelectAll} className="text-xs font-bold text-blue-600 hover:underline">
+                        {selectedStudentIds.size === filteredStudents.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {filteredStudents.map(s => (
+                        <div 
+                            key={s.id} 
+                            onClick={() => toggleStudentSelection(s.id)}
+                            className={clsx(
+                                "p-3 border rounded-lg cursor-pointer flex items-center gap-3 transition-all",
+                                selectedStudentIds.has(s.id) ? "bg-indigo-50 border-indigo-200 shadow-sm" : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                             )}
+                        >
+                            {selectedStudentIds.has(s.id) ? (
+                                <CheckSquare size={18} className="text-indigo-600" />
+                            ) : (
+                                <Square size={18} className="text-slate-300" />
+                            )}
+                            <div className="overflow-hidden">
+                                <p className="text-xs font-bold text-slate-800 truncate">{s.fullName}</p>
+                                <p className="text-[10px] text-slate-500 font-mono">{s.rollNumber}</p>
+                            </div>
                         </div>
                     ))}
                 </div>
-            ))}
+            </div>
+          )}
+
+          {/* Preview Display for Single Student */}
+          {activeTab === 'single' && templateId && studentId && (
+              <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
+                  <div className="mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <FileText size={14} /> Live Print Preview ({orientation === 'portrait' ? 'Portrait' : 'Landscape'})
+                  </div>
+                  <div 
+                    className="bg-white shadow-2xl relative overflow-hidden border border-slate-200 shrink-0"
+                    style={{ 
+                        width: `${previewSize.width}px`, 
+                        height: `${previewSize.height}px`,
+                        transform: orientation === 'portrait' ? 'scale(0.65)' : 'scale(0.55)',
+                        transformOrigin: 'top center',
+                        marginBottom: `-${previewSize.height * (orientation === 'portrait' ? 0.35 : 0.45)}px`
+                    }}
+                  >
+                    {previewElements.map(el => (
+                        <div
+                            key={el.id} 
+                            className="absolute"
+                            style={{ 
+                                left: el.x, 
+                                top: el.y, 
+                                width: el.width, 
+                                height: el.height, 
+                                opacity: el.style.opacity,
+                                zIndex: el.type === 'watermark' ? 0 : 10
+                            }}
+                        >
+                            {el.type === 'text' ? (
+                                <div style={{ 
+                                    fontSize: `${el.style.fontSize}px`, 
+                                    fontFamily: el.style.fontFamily, 
+                                    color: el.style.color, 
+                                    fontWeight: el.style.fontWeight, 
+                                    fontStyle: el.style.fontStyle, 
+                                    textDecoration: el.style.textDecoration, 
+                                    textAlign: el.style.textAlign as any, 
+                                    lineHeight: el.style.lineHeight, 
+                                    letterSpacing: `${el.style.letterSpacing}px`, 
+                                    whiteSpace: 'pre-wrap', 
+                                    wordBreak: 'break-word', 
+                                    width: '100%', 
+                                    height: '100%' 
+                                }}>
+                                    {el.content}
+                                </div>
+                            ) : ( 
+                                <img src={el.content} alt="preview element" className="w-full h-full object-contain" /> 
+                            )}
+                        </div>
+                    ))}
+                  </div>
+              </div>
+          )}
+          
+          {activeTab === 'single' && (!templateId || !studentId) && (
+              <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl py-20 text-center text-slate-400">
+                  Select a template and student to see the preview.
+              </div>
+          )}
         </div>
-        <style>{`
-            @media print {
-                @page {
-                    size: ${previewSize.width}px ${previewSize.height}px;
-                    margin: 0;
-                }
-                body {
-                    background-color: white;
-                }
-            }
-        `}</style>
+      </div>
+
+      {/* Hidden Print Section - Optimized for Browser Printing */}
+      <div className="hidden print:block">
+          {activeTab === 'single' && (
+              <div 
+                className="bg-white relative overflow-hidden mx-auto"
+                style={{ width: `${previewSize.width}px`, height: `${previewSize.height}px` }}
+              >
+                {previewElements.map(el => (
+                    <div
+                        key={el.id} 
+                        className="absolute"
+                        style={{ 
+                            left: el.x, 
+                            top: el.y, 
+                            width: el.width, 
+                            height: el.height, 
+                            opacity: el.style.opacity,
+                            zIndex: el.type === 'watermark' ? 0 : 10
+                        }}
+                    >
+                        {el.type === 'text' ? (
+                            <div style={{ 
+                                fontSize: `${el.style.fontSize}px`, 
+                                fontFamily: el.style.fontFamily, 
+                                color: el.style.color, 
+                                fontWeight: el.style.fontWeight, 
+                                fontStyle: el.style.fontStyle, 
+                                textDecoration: el.style.textDecoration, 
+                                textAlign: el.style.textAlign as any, 
+                                lineHeight: el.style.lineHeight, 
+                                letterSpacing: `${el.style.letterSpacing}px`, 
+                                whiteSpace: 'pre-wrap', 
+                                wordBreak: 'break-word', 
+                                width: '100%', 
+                                height: '100%' 
+                            }}>
+                                {el.content}
+                            </div>
+                        ) : ( 
+                            <img src={el.content} alt="print element" className="w-full h-full object-contain" /> 
+                        )}
+                    </div>
+                ))}
+              </div>
+          )}
+      </div>
     </div>
   );
 };

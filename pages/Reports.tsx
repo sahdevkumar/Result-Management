@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { DataService } from '../services/dataService';
 import { Student, Exam, MarkRecord, Subject } from '../types';
-import { Download, ChevronDown, Loader2, Printer } from 'lucide-react';
+import { Download, ChevronDown, Loader2, Printer, FileDown, FileText } from 'lucide-react';
+import { useToast } from '../components/ToastContext';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export const Reports: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -12,6 +16,10 @@ export const Reports: React.FC = () => {
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   
   const [reportMarks, setReportMarks] = useState<MarkRecord[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  const { showToast } = useToast();
 
   useEffect(() => {
     const init = async () => {
@@ -40,44 +48,104 @@ export const Reports: React.FC = () => {
     setReportMarks(data);
   };
 
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+    setIsGenerating(true);
+    try {
+        const element = reportRef.current;
+        const canvas = await html2canvas(element, {
+            scale: 3,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Report_${students.find(s => s.id === selectedStudentId)?.fullName || 'Student'}.pdf`);
+        showToast("PDF generated successfully!", "success");
+    } catch (error) {
+        showToast("Failed to generate PDF", "error");
+    } finally {
+        setIsGenerating(false);
+    }
+  };
+
+  const handleExportWord = () => {
+    if (!reportRef.current) return;
+    
+    const selectedStudent = students.find(s => s.id === selectedStudentId);
+    const selectedExam = exams.find(e => e.id === selectedExamId);
+    
+    // We clone the content to avoid modifying the live UI
+    const content = reportRef.current.innerHTML;
+    
+    const header = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>Export to Word</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+          th, td { border: 1px solid #dddddd; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; font-weight: bold; }
+          .report-header { background-color: #1e293b; color: white; padding: 20px; text-align: center; }
+          .student-info { margin-bottom: 20px; padding: 10px; border: 1px solid #eee; }
+          .grade-badge { font-weight: bold; color: #10b981; }
+          .grade-fail { font-weight: bold; color: #ef4444; }
+          .no-print { display: none !important; }
+        </style>
+      </head>
+      <body>
+        ${content}
+      </body>
+      </html>
+    `;
+    
+    const blob = new Blob(['\ufeff', header], {
+      type: 'application/msword'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Report_${selectedStudent?.fullName || 'Student'}_${selectedExam?.name || 'Exam'}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("Word document exported!", "success");
+  };
+
   const handlePrint = () => {
       window.print();
   };
 
   const selectedStudent = students.find(s => s.id === selectedStudentId);
   
-  // Consolidation Logic
+  // Consolidation Logic for unified MarkRecord row
   const consolidatedMarks: Record<string, { obj: number, subj: number, total: number, max: number, grade: string }> = {};
   
   reportMarks.forEach(mark => {
-      if (!consolidatedMarks[mark.subjectId]) {
-          const sub = subjects.find(s => s.id === mark.subjectId);
-          consolidatedMarks[mark.subjectId] = { obj: 0, subj: 0, total: 0, max: sub?.maxMarks || 100, grade: '-' };
-      }
-      if (mark.assessmentType === 'Objective') consolidatedMarks[mark.subjectId].obj = mark.obtainedMarks;
-      if (mark.assessmentType === 'Subjective') consolidatedMarks[mark.subjectId].subj = mark.obtainedMarks;
-      
-      consolidatedMarks[mark.subjectId].total += mark.obtainedMarks;
-  });
-
-  // Calculate Grades on Total
-  Object.keys(consolidatedMarks).forEach(subId => {
-      const item = consolidatedMarks[subId];
-      const pct = (item.total / item.max) * 100;
-      if (pct >= 90) item.grade = 'A+';
-      else if (pct >= 80) item.grade = 'A';
-      else if (pct >= 70) item.grade = 'B';
-      else if (pct >= 60) item.grade = 'C';
-      else if (pct >= 50) item.grade = 'D';
-      else if (pct >= 40) item.grade = 'E';
-      else item.grade = 'F';
+      const sub = subjects.find(s => s.id === mark.subjectId);
+      consolidatedMarks[mark.subjectId] = { 
+          obj: mark.objMarks || 0, 
+          subj: mark.subMarks || 0, 
+          total: (mark.objMarks || 0) + (mark.subMarks || 0), 
+          max: mark.objMaxMarks || sub?.maxMarks || 100, 
+          grade: mark.grade || '-' 
+      };
   });
 
   const totalObtained = Object.values(consolidatedMarks).reduce((acc, curr) => acc + curr.total, 0);
   const totalMax = Object.values(consolidatedMarks).reduce((acc, curr) => acc + curr.max, 0);
   const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
 
-  // Extract existing remarks
   const existingRemarks = reportMarks
     .filter(m => m.remarks && m.remarks.trim() !== '')
     .map(m => {
@@ -126,8 +194,8 @@ export const Reports: React.FC = () => {
         </div>
 
         {/* Report Card Preview */}
-        <div className="lg:col-span-2 print-area">
-           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200 print:shadow-none print:border-none print:w-full">
+        <div className="lg:col-span-2">
+           <div ref={reportRef} className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200 print:shadow-none print:border-none print:w-full">
               <div className="bg-slate-800 p-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:bg-slate-800 print:text-white print-color-adjust-exact">
                  <div>
                     <h2 className="text-2xl font-serif font-bold">Progress Report</h2>
@@ -188,7 +256,7 @@ export const Reports: React.FC = () => {
                                         <td className="py-3 text-center text-slate-800 font-bold">{data.total}</td>
                                         <td className="py-3 text-center text-slate-500">{data.max}</td>
                                         <td className="py-3 text-center">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${data.grade === 'F' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'} print-color-adjust-exact`}>
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${data.grade === 'Fail' || data.grade === 'F' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'} print-color-adjust-exact`}>
                                                 {data.grade}
                                             </span>
                                         </td>
@@ -201,12 +269,7 @@ export const Reports: React.FC = () => {
 
                  {/* Remarks Section */}
                  <div className="bg-slate-50 rounded-xl p-6 border border-slate-200 relative group print:bg-white print:border-slate-300">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
-                        <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                           Teacher's Remarks
-                        </h4>
-                    </div>
-                    
+                    <h4 className="font-bold text-slate-800 mb-3">Teacher's Remarks</h4>
                     {existingRemarks.length > 0 ? (
                         <div className="space-y-2">
                             {existingRemarks.map((rem, idx) => (
@@ -220,13 +283,28 @@ export const Reports: React.FC = () => {
                     )}
                  </div>
                  
-                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end no-print">
+                 <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap justify-end gap-3 no-print">
+                    <button 
+                        onClick={handleExportWord}
+                        className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-2 rounded-lg transition-colors justify-center font-medium border border-slate-200"
+                    >
+                        <FileText size={18} />
+                        Export Word
+                    </button>
+                    <button 
+                        onClick={handleDownloadPDF}
+                        disabled={isGenerating}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors justify-center font-medium disabled:opacity-50 shadow-md shadow-indigo-100"
+                    >
+                        {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                        Download PDF
+                    </button>
                     <button 
                         onClick={handlePrint}
-                        className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg transition-colors w-full sm:w-auto justify-center"
+                        className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg transition-colors justify-center font-medium shadow-md shadow-slate-200"
                     >
                         <Printer size={18} />
-                        Print / Download PDF
+                        Print Report
                     </button>
                  </div>
               </div>

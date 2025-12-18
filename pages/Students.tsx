@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
 import { Student, StudentStatus, SchoolClass } from '../types';
-import { Search, Plus, Filter, Trash2, X, RefreshCw, Pencil, Loader2, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Filter, Trash2, X, RefreshCw, Pencil, Loader2, AlertTriangle, Upload, FileDown, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import clsx from 'clsx';
 
@@ -29,6 +29,10 @@ export const Students: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Modal State for Import
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const { showToast } = useToast();
 
@@ -152,6 +156,76 @@ export const Students: React.FC = () => {
     }
   };
 
+  const downloadSampleCsv = () => {
+    const headers = "Full Name,Class,Section,Guardian Name,Contact Number";
+    const sample = "John Doe,10,A,Robert Doe,9876543210\nJane Smith,9,B,Mary Smith,9123456780";
+    const blob = new Blob([`${headers}\n${sample}`], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "student_import_sample.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0];
+     if (!file) return;
+
+     const reader = new FileReader();
+     reader.onload = async (event) => {
+        const text = event.target?.result as string;
+        await processCSV(text);
+        // Reset file input
+        e.target.value = ''; 
+     };
+     reader.readAsText(file);
+  };
+
+  const processCSV = async (text: string) => {
+      setIsImporting(true);
+      try {
+          const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+          if (lines.length < 2) throw new Error("File is empty or missing data rows");
+
+          const newStudents: Omit<Student, 'id' | 'rollNumber'>[] = [];
+          
+          // Skip header row (index 0)
+          for (let i = 1; i < lines.length; i++) {
+              // Handle CSV line parsing (simple split by comma)
+              // For robustness with quoted strings, a library like papaparse is recommended, 
+              // but for this sample we use simple split assuming standard input.
+              const cols = lines[i].split(',').map(c => c.trim());
+              
+              if (cols.length < 5) continue; // Skip incomplete lines
+
+              newStudents.push({
+                  fullName: cols[0],
+                  className: cols[1],
+                  section: cols[2],
+                  guardianName: cols[3],
+                  contactNumber: cols[4],
+                  status: StudentStatus.Active,
+                  avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(cols[0])}&background=random`
+              });
+          }
+
+          if (newStudents.length === 0) throw new Error("No valid student records found in file");
+
+          await DataService.bulkAddStudents(newStudents);
+          showToast(`Successfully imported ${newStudents.length} students`, 'success');
+          setShowImportModal(false);
+          await loadData();
+      } catch (e: any) {
+          console.error(e);
+          showToast(e.message || "Failed to import CSV", 'error');
+      } finally {
+          setIsImporting(false);
+      }
+  };
+
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -166,13 +240,22 @@ export const Students: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-800">Student Directory</h1>
           <p className="text-slate-500 text-sm">Manage student profiles and enrollment status</p>
         </div>
-        <button 
-          onClick={handleAddNew}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm shadow-blue-500/20"
-        >
-          <Plus size={18} />
-          <span>Add Student</span>
-        </button>
+        <div className="flex gap-2">
+            <button 
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+            >
+                <Upload size={18} />
+                <span className="hidden sm:inline">Import CSV</span>
+            </button>
+            <button 
+                onClick={handleAddNew}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm shadow-blue-500/20"
+            >
+                <Plus size={18} />
+                <span>Add Student</span>
+            </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -394,6 +477,76 @@ export const Students: React.FC = () => {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                   <div className="flex items-center gap-3">
+                       <div className="bg-green-100 p-2 rounded-lg text-green-600">
+                           <FileSpreadsheet size={24} />
+                       </div>
+                       <div>
+                           <h3 className="font-bold text-lg text-slate-800">Bulk Import Students</h3>
+                           <p className="text-xs text-slate-500">Upload CSV file to import student records</p>
+                       </div>
+                   </div>
+                   <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600">
+                       <X size={24} />
+                   </button>
+               </div>
+               
+               <div className="p-6 space-y-6">
+                   <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                       <h4 className="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
+                           <AlertTriangle size={16} /> Instructions
+                       </h4>
+                       <ul className="list-disc list-inside text-xs text-blue-700 space-y-1">
+                           <li>File must be in <strong>.CSV</strong> format.</li>
+                           <li>Required columns: <strong>Full Name, Class, Section, Guardian Name, Contact Number</strong>.</li>
+                           <li>Class and Section must match exactly with existing classes in the system.</li>
+                           <li>Roll numbers will be auto-generated.</li>
+                       </ul>
+                       <button 
+                           onClick={downloadSampleCsv}
+                           className="mt-3 flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                       >
+                           <FileDown size={14} /> Download Sample CSV
+                       </button>
+                   </div>
+
+                   <div>
+                       <label className="block w-full cursor-pointer group">
+                           <div className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 hover:bg-slate-100 hover:border-blue-400 transition-all">
+                               {isImporting ? (
+                                   <div className="flex flex-col items-center gap-2">
+                                       <Loader2 className="animate-spin text-blue-600" size={32} />
+                                       <span className="text-sm font-medium text-slate-500">Processing file...</span>
+                                   </div>
+                               ) : (
+                                   <>
+                                       <div className="p-3 bg-white rounded-full shadow-sm mb-2 group-hover:scale-110 transition-transform">
+                                           <Upload className="text-slate-400 group-hover:text-blue-500" size={24} />
+                                       </div>
+                                       <p className="text-sm text-slate-500 font-medium">Click to upload or drag & drop</p>
+                                       <p className="text-xs text-slate-400">CSV files only</p>
+                                   </>
+                               )}
+                           </div>
+                           <input 
+                               type="file" 
+                               accept=".csv" 
+                               className="hidden" 
+                               onChange={handleFileUpload}
+                               disabled={isImporting}
+                           />
+                       </label>
+                   </div>
+               </div>
+           </div>
         </div>
       )}
 
