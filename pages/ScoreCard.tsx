@@ -35,16 +35,13 @@ interface LayoutBlock {
 }
 
 const DEFAULT_LAYOUT: LayoutBlock[] = [
-    { id: 'logo', type: 'logo', label: 'School Logo', x: 40, y: 30, w: 100, h: 100, style: { fontSize: 0, color: '', border: false }, isVisible: true },
-    { id: 'school_name', type: 'school_name', label: 'School Name', x: 150, y: 40, w: 600, h: 50, style: { fontSize: 32, color: '#1e1b4b', textAlign: 'center', fontWeight: 'bold' }, isVisible: true },
-    { id: 'tagline', type: 'tagline', label: 'Tagline', x: 150, y: 95, w: 600, h: 30, style: { fontSize: 12, color: '#475569', textAlign: 'center' }, isVisible: true },
-    { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 150, w: 698, h: 30, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
-    
-    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 190, w: 698, h: 100, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
-    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 310, w: 698, h: 400, style: { fontSize: 12, color: '#000000', textAlign: 'center' }, isVisible: true },
-    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 730, w: 340, h: 150, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
-    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 730, w: 338, h: 150, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f1f5f9', padding: 20 }, isVisible: true },
-    { id: 'signatures', type: 'signatures', label: 'Signatures', x: 48, y: 950, w: 698, h: 100, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
+    { id: 'logo', type: 'logo', label: 'School Logo', x: 347, y: 30, w: 100, h: 100, style: { fontSize: 0, color: '', border: false }, isVisible: true },
+    { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 140, w: 698, h: 30, style: { fontSize: 12, color: '#64748b', textAlign: 'center' }, isVisible: true },
+    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 185, w: 698, h: 145, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
+    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 345, w: 698, h: 400, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
+    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 770, w: 340, h: 150, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
+    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 770, w: 338, h: 150, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f1f5f9', padding: 20 }, isVisible: true },
+    { id: 'signatures', type: 'signatures', label: 'Signatures', x: 48, y: 990, w: 698, h: 100, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
 ];
 
 // --- Helper Hook for Score Calculations ---
@@ -169,27 +166,13 @@ const BlockRenderer: React.FC<{
                      {schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" /> : <Trophy size={Math.min(block.w, block.h) * 0.8} className="text-indigo-900" />}
                 </div>
             );
-        case 'school_name':
-            return (
-                <div style={{ ...block.style, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: block.style.textAlign === 'center' ? 'center' : block.style.textAlign === 'right' ? 'flex-end' : 'flex-start' }}>
-                    <h1 style={{ fontSize: `${block.style.fontSize}px`, fontWeight: block.style.fontWeight, letterSpacing: '1px', lineHeight: 1 }}>{schoolInfo.name || 'UNACADEMY'}</h1>
-                </div>
-            );
-        case 'tagline':
-            return (
-                <div style={{ ...block.style, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: block.style.textAlign === 'center' ? 'center' : block.style.textAlign === 'right' ? 'flex-end' : 'flex-start' }}>
-                     <p style={{ fontSize: `${block.style.fontSize}px`, letterSpacing: '2px', textTransform: 'uppercase' }}>{schoolInfo.tagline || 'Excellence in Education'}</p>
-                </div>
-            );
         case 'header_info':
             return (
-                <div className="w-full h-full flex justify-between items-end px-2 font-sans text-slate-500 border-b border-slate-200 pb-1" style={{ fontSize: `${block.style.fontSize}px` }}>
-                    <div className="text-left"><strong>Affiliation:</strong> 2430012</div>
+                <div className="w-full h-full flex justify-center items-end px-2 font-sans text-slate-500 border-b border-slate-200 pb-1" style={{ fontSize: `${block.style.fontSize}px` }}>
                     <div className="text-center">
                          <span className="bg-indigo-900 text-white px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mx-2">Report Card</span>
                          <span className="font-bold uppercase">2024-2025</span>
                     </div>
-                    <div className="text-right"><strong>Term:</strong> Annual</div>
                 </div>
             );
         case 'student_info':
@@ -198,6 +181,10 @@ const BlockRenderer: React.FC<{
                      <div className="grid grid-cols-4 bg-slate-100 border-b border-slate-300">
                         <div className="p-2 border-r border-slate-300 text-xs font-bold text-slate-500 uppercase">Student Name</div>
                         <div className="p-2 border-r border-slate-300 col-span-3 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.fullName}</div>
+                    </div>
+                    <div className="grid grid-cols-4 border-b border-slate-300">
+                        <div className="p-2 border-r border-slate-300 bg-slate-50 text-xs font-bold text-slate-500 uppercase">Parent's Name</div>
+                        <div className="p-2 border-r border-slate-300 col-span-3 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.guardianName}</div>
                     </div>
                     <div className="grid grid-cols-4">
                         <div className="p-2 border-r border-slate-300 bg-slate-100 text-xs font-bold text-slate-500 uppercase">Class / Section</div>
@@ -210,7 +197,7 @@ const BlockRenderer: React.FC<{
         case 'marks_table':
             return (
                 <div className="w-full h-full font-sans overflow-hidden">
-                     <div className="rounded-t-lg bg-indigo-900 text-white p-1 text-center text-xs font-bold uppercase tracking-wider">Scholastic Areas</div>
+                     <div className="rounded-t-lg bg-indigo-900 text-white p-1.5 text-center text-xs font-bold uppercase tracking-wider">Academic Performance</div>
                      <div className="border border-slate-400">
                         <table className="w-full text-center border-collapse table-fixed bg-white/70">
                              <thead>
@@ -295,9 +282,9 @@ const BlockRenderer: React.FC<{
         case 'signatures':
             return (
                 <div className="w-full h-full flex justify-between items-end px-4" style={{ fontSize: `${block.style.fontSize}px` }}>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Class Teacher</p></div>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Principal</p></div>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Parent</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Parents</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Mentors</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Center Head</p></div>
                 </div>
             );
         default:
@@ -319,40 +306,43 @@ const CustomizableScoreCard: React.FC<{
 }> = ({ student, marks, exams, subjects, helpers, schoolInfo, layout, scale = 1, isPreview = false }) => {
     const overallStats = helpers.calculateOverall(marks);
     const PAGE_WIDTH = 794;
+    const PAGE_HEIGHT = 1123;
     
     return (
         <div 
-            className={clsx("scorecard-page relative bg-white shadow-2xl mx-auto overflow-hidden mb-8", !isPreview && "pointer-events-none")} 
-            style={{ width: `${PAGE_WIDTH}px`, height: '1123px', transform: `scale(${scale})`, transformOrigin: 'top center' }}
+            className="scorecard-wrapper"
+            style={{ width: `${PAGE_WIDTH * scale}px`, height: `${PAGE_HEIGHT * scale}px`, marginBottom: isPreview ? '2rem' : '0' }}
         >
-             {/* Decorative Borders (Static) */}
-             <div className="absolute inset-0 border-[3px] border-indigo-900 m-3 pointer-events-none z-0 rounded-sm"></div>
-             
-             {schoolInfo.watermark && (
-                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-10 grayscale">
-                     <img src={schoolInfo.watermark} className="w-[80%] max-h-[80%] object-contain" />
-                 </div>
-             )}
+            <div 
+                className={clsx("scorecard-page relative bg-white shadow-2xl mx-auto overflow-hidden", !isPreview && "pointer-events-none")} 
+                style={{ width: `${PAGE_WIDTH}px`, height: `${PAGE_HEIGHT}px`, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+            >
+                 {schoolInfo.watermark && (
+                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-10 grayscale">
+                         <img src={schoolInfo.watermark} className="w-[80%] max-h-[80%] object-contain" />
+                     </div>
+                 )}
 
-             {/* Render Layout Blocks */}
-             {layout.filter(l => l.isVisible).map(block => (
-                 <div 
-                    key={block.id}
-                    className="absolute"
-                    style={{ left: block.x, top: block.y, width: block.w, height: block.h, zIndex: 10 }}
-                 >
-                     <BlockRenderer 
-                        block={block}
-                        schoolInfo={schoolInfo}
-                        student={student}
-                        marks={marks}
-                        exams={exams}
-                        subjects={subjects}
-                        helpers={helpers}
-                        overallStats={overallStats}
-                     />
-                 </div>
-             ))}
+                 {/* Render Layout Blocks */}
+                 {layout.filter(l => l.isVisible).map(block => (
+                     <div 
+                        key={block.id}
+                        className="absolute"
+                        style={{ left: block.x, top: block.y, width: block.w, height: block.h, zIndex: 10 }}
+                     >
+                         <BlockRenderer 
+                            block={block}
+                            schoolInfo={schoolInfo}
+                            student={student}
+                            marks={marks}
+                            exams={exams}
+                            subjects={subjects}
+                            helpers={helpers}
+                            overallStats={overallStats}
+                         />
+                     </div>
+                 ))}
+            </div>
         </div>
     );
 };
@@ -478,6 +468,82 @@ export const ScoreCard: React.FC = () => {
       } catch (e) { showToast("Failed to load bulk data", 'error'); } finally { setLoadingBulk(false); }
   };
 
+  const handlePrintInNewTab = () => {
+      if (!reportContainerRef.current) return;
+      
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+          showToast("Pop-up blocked. Please allow pop-ups for printing.", "error");
+          return;
+      }
+
+      // Clone nodes and remove transform styles for scale 1
+      const clonedContainer = reportContainerRef.current.cloneNode(true) as HTMLElement;
+      
+      // Fix transformations for printing
+      const wrappers = clonedContainer.querySelectorAll('.scorecard-wrapper');
+      wrappers.forEach((wrapper: any) => {
+          wrapper.style.width = '794px';
+          wrapper.style.height = '1123px';
+          wrapper.style.margin = '0 auto';
+          wrapper.style.transform = 'none';
+      });
+
+      const pages = clonedContainer.querySelectorAll('.scorecard-page');
+      pages.forEach((page: any) => {
+          page.style.transform = 'none';
+          page.style.margin = '0 auto';
+          page.style.boxShadow = 'none';
+          page.style.border = 'none';
+      });
+
+      printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print Score Cards</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+              <style>
+                @media print {
+                  body { background: white; margin: 0; padding: 0; }
+                  .no-print { display: none !important; }
+                  .scorecard-wrapper { page-break-after: always; margin: 0 !important; }
+                  * { 
+                    -webkit-print-color-adjust: exact !important; 
+                    print-color-adjust: exact !important; 
+                    color-adjust: exact !important;
+                  }
+                  @page { size: A4; margin: 0; }
+                }
+                body { font-family: 'Inter', sans-serif; background: #f1f5f9; padding: 40px 0; }
+                .print-now-btn {
+                    position: fixed; top: 20px; right: 20px; z-index: 1000;
+                    background: #4f46e5; color: white; padding: 12px 24px; 
+                    border-radius: 12px; font-weight: bold; cursor: pointer; 
+                    box-shadow: 0 10px 15px -3px rgb(79 70 229 / 0.3); border: none;
+                    transition: all 0.2s;
+                }
+                .print-now-btn:hover { background: #4338ca; transform: translateY(-1px); }
+              </style>
+            </head>
+            <body>
+              <button class="no-print print-now-btn" onclick="window.print()">
+                  Confirm & Print
+              </button>
+              <div class="print-container">
+                ${clonedContainer.innerHTML}
+              </div>
+              <script>
+                window.onload = () => {
+                   setTimeout(() => { window.print(); }, 800);
+                };
+              </script>
+            </body>
+          </html>
+      `);
+      printWindow.document.close();
+  };
+
   const getBase64ImageFromURL = (url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -496,7 +562,6 @@ export const ScoreCard: React.FC = () => {
         }
       };
       img.onerror = error => {
-        // Return a 1x1 transparent pixel if fail to avoid crashing PDF generation
         resolve("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
       };
       img.src = url;
@@ -506,20 +571,17 @@ export const ScoreCard: React.FC = () => {
   const handleDownloadPDF = async () => {
       setDownloading(true);
       try {
-          // Prepare fonts (if standard fonts are used, pdfmake has them. If custom, need vfs).
-          // We'll stick to standard Roboto provided by default build.
+          const pdfScale = 0.75;
+          const PAGE_W = 595.28;
+          const PAGE_H = 841.89;
 
-          // Pre-fetch images
           let logoBase64 = "";
           let watermarkBase64 = "";
           
           if (schoolInfo.logo) logoBase64 = await getBase64ImageFromURL(schoolInfo.logo);
           if (schoolInfo.watermark) watermarkBase64 = await getBase64ImageFromURL(schoolInfo.watermark);
 
-          const scale = 0.75; // Approx px to pt ratio
           const content: any[] = [];
-
-          // Determine which students to print
           const studentsToPrint = activeTab === 'single' 
             ? (currentStudent ? [currentStudent] : []) 
             : students.filter(s => bulkSelection.has(s.id));
@@ -530,227 +592,128 @@ export const ScoreCard: React.FC = () => {
               return;
           }
 
-          // Generate Content for each student
           for (let i = 0; i < studentsToPrint.length; i++) {
               const student = studentsToPrint[i];
               const marks = activeTab === 'single' ? studentMarks : (bulkMarks[student.id] || []);
               const overallStats = helpers.calculateOverall(marks);
-              
-              // Helper to get block config
               const getB = (type: string) => layout.find(l => l.type === type && l.isVisible);
-
               const pageContent: any[] = [];
 
-              // Watermark Background (using absolute position hack or simple image)
               if (watermarkBase64) {
                   pageContent.push({
-                      image: watermarkBase64,
-                      width: 400,
-                      opacity: 0.1,
-                      absolutePosition: { x: 100, y: 300 }
+                      image: watermarkBase64, width: 350, opacity: 0.1,
+                      absolutePosition: { x: (PAGE_W - 350) / 2, y: (PAGE_H - 300) / 2 }
                   });
               }
 
-              // Decorative Border (Rect)
-              pageContent.push({
-                  canvas: [{
-                      type: 'rect',
-                      x: 10, y: 10,
-                      w: 575, h: 820,
-                      lineWidth: 3,
-                      lineColor: '#1e1b4b',
-                      r: 5
-                  }],
-                  absolutePosition: { x: 0, y: 0 }
-              });
-
-              // --- Process Blocks ---
-              
-              // Logo
               const logoBlock = getB('logo');
               if (logoBlock && logoBase64) {
                   pageContent.push({
-                      image: logoBase64,
-                      width: Math.min(logoBlock.w * scale, logoBlock.h * scale), // Maintain aspect ratio roughly
-                      absolutePosition: { x: logoBlock.x * scale, y: logoBlock.y * scale }
+                      image: logoBase64, fit: [logoBlock.w * pdfScale, logoBlock.h * pdfScale],
+                      absolutePosition: { x: logoBlock.x * pdfScale, y: logoBlock.y * pdfScale }
                   });
               }
 
-              // School Name
-              const nameBlock = getB('school_name');
-              if (nameBlock) {
-                  pageContent.push({
-                      text: schoolInfo.name || 'UNACADEMY',
-                      fontSize: nameBlock.style.fontSize * scale,
-                      bold: nameBlock.style.fontWeight === 'bold',
-                      color: nameBlock.style.color,
-                      alignment: nameBlock.style.textAlign,
-                      absolutePosition: { x: nameBlock.x * scale, y: nameBlock.y * scale },
-                      width: nameBlock.w * scale // Constrain width for alignment
-                  });
-              }
-
-              // Tagline
-              const tagBlock = getB('tagline');
-              if (tagBlock) {
-                  pageContent.push({
-                      text: (schoolInfo.tagline || '').toUpperCase(),
-                      fontSize: tagBlock.style.fontSize * scale,
-                      color: tagBlock.style.color,
-                      alignment: tagBlock.style.textAlign,
-                      letterSpacing: 2,
-                      absolutePosition: { x: tagBlock.x * scale, y: tagBlock.y * scale },
-                      width: tagBlock.w * scale
-                  });
-              }
-
-              // Header Info
               const infoBlock = getB('header_info');
               if (infoBlock) {
-                  // Simplified representation for PDFMake using columns
-                  // Note: absolutePosition for columns works but complex. 
-                  // We'll place a table or columns at the position.
                   pageContent.push({
-                      columns: [
-                          { text: 'Affiliation: 2430012', alignment: 'left' },
-                          { text: `Report Card ${new Date().getFullYear()}-${new Date().getFullYear()+1}`, alignment: 'center', bold: true },
-                          { text: 'Term: Annual', alignment: 'right' }
-                      ],
-                      fontSize: infoBlock.style.fontSize * scale,
-                      color: infoBlock.style.color,
-                      absolutePosition: { x: infoBlock.x * scale, y: infoBlock.y * scale },
-                      width: infoBlock.w * scale
-                  });
-                  // Line
-                  pageContent.push({
-                      canvas: [{ type: 'line', x1: 0, y1: 0, x2: infoBlock.w * scale, y2: 0, lineWidth: 1, lineColor: '#e2e8f0' }],
-                      absolutePosition: { x: infoBlock.x * scale, y: (infoBlock.y + infoBlock.h) * scale }
+                      columns: [{ text: `Report Card ${new Date().getFullYear()}-${new Date().getFullYear()+1}`, alignment: 'center', bold: true, width: '*' }],
+                      fontSize: infoBlock.style.fontSize * pdfScale, color: infoBlock.style.color,
+                      absolutePosition: { x: infoBlock.x * pdfScale, y: infoBlock.y * pdfScale }, width: infoBlock.w * pdfScale
                   });
               }
 
-              // Student Info
               const stuBlock = getB('student_info');
               if (stuBlock) {
                   pageContent.push({
                       table: {
-                          widths: ['25%', '75%'],
+                          widths: ['30%', '70%'],
                           body: [
-                              [
-                                  { text: 'STUDENT NAME', bold: true, fillColor: '#f1f5f9', fontSize: 9 }, 
-                                  { text: student.fullName, bold: true, fontSize: stuBlock.style.fontSize * scale }
-                              ],
-                              [
-                                  { text: 'CLASS / SECTION', bold: true, fillColor: '#f1f5f9', fontSize: 9 }, 
-                                  { text: `${student.className} - ${student.section}`, fontSize: stuBlock.style.fontSize * scale }
-                              ],
-                              [
-                                  { text: 'ROLL NUMBER', bold: true, fillColor: '#f1f5f9', fontSize: 9 }, 
-                                  { text: student.rollNumber, fontSize: stuBlock.style.fontSize * scale }
-                              ]
+                              [{ text: 'STUDENT NAME', bold: true, fillColor: '#f8fafc', fontSize: 9 }, { text: student.fullName, bold: true, fontSize: 11, margin: [5, 0] }],
+                              [{ text: "PARENT'S NAME", bold: true, fillColor: '#f8fafc', fontSize: 9 }, { text: student.guardianName, bold: true, fontSize: 10, margin: [5, 0] }],
+                              [{ text: 'CLASS / SECTION', bold: true, fillColor: '#f8fafc', fontSize: 9 }, { text: `${student.className} - ${student.section}`, fontSize: 10, margin: [5, 0] }],
+                              [{ text: 'ROLL NUMBER', bold: true, fillColor: '#f8fafc', fontSize: 9 }, { text: student.rollNumber, fontSize: 10, margin: [5, 0] }]
                           ]
                       },
-                      layout: stuBlock.style.border ? 'lightHorizontalLines' : 'noBorders',
-                      absolutePosition: { x: stuBlock.x * scale, y: stuBlock.y * scale },
-                      width: stuBlock.w * scale
+                      layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cbd5e1', vLineColor: () => '#cbd5e1' },
+                      absolutePosition: { x: stuBlock.x * pdfScale, y: stuBlock.y * pdfScale }, width: stuBlock.w * pdfScale
                   });
               }
 
-              // Marks Table
               const tblBlock = getB('marks_table');
               if (tblBlock) {
-                  // Construct Table Body
-                  // Widths: Subject (fixed approx), Type (fixed approx), Exams... (flex), Overall (fixed)
-                  const subWidth = 120;
-                  const typeWidth = 30;
-                  const resultWidth = 100;
-                  const availableForExams = (tblBlock.w * scale) - subWidth - typeWidth - resultWidth;
-                  const examWidth = exams.length > 0 ? availableForExams / (exams.length * 2) : 0;
-                  
+                  const tableWidth = tblBlock.w * pdfScale;
+                  const colSubject = tableWidth * 0.28;
+                  const colType = tableWidth * 0.08;
+                  const colOverall = tableWidth * 0.28;
+                  const colExamSpace = tableWidth - colSubject - colType - colOverall;
+                  const colExamCell = colExamSpace / (exams.length * 2);
                   const tableBody: any[] = [];
-                  
-                  // Header Rows
+                  const sortedExams = [...exams].sort((a, b) => a.name.localeCompare(b.name));
+
                   const headerRow1: any[] = [
-                      { text: 'SUBJECT', rowSpan: 2, bold: true, alignment: 'left', margin: [0, 5] },
-                      { text: 'TYPE', rowSpan: 2, bold: true, alignment: 'center', margin: [0, 5] }
+                      { text: 'SUBJECT', rowSpan: 2, bold: true, alignment: 'left', margin: [5, 8], fontSize: 9, fillColor: '#f1f5f9' },
+                      { text: 'TYPE', rowSpan: 2, bold: true, alignment: 'center', margin: [0, 8], fontSize: 8, fillColor: '#f1f5f9' }
                   ];
-                  exams.forEach(e => {
-                      headerRow1.push({ text: e.name.toUpperCase(), colSpan: 2, bold: true, alignment: 'center' });
-                      headerRow1.push({}); // Placeholder for colspan
+                  sortedExams.forEach(e => {
+                      headerRow1.push({ text: e.name.toUpperCase(), colSpan: 2, bold: true, alignment: 'center', fontSize: 8, fillColor: '#f1f5f9' });
+                      headerRow1.push({});
                   });
-                  headerRow1.push({ text: 'OVERALL', colSpan: 3, bold: true, alignment: 'center', fillColor: '#e2e8f0' });
-                  headerRow1.push({}); 
-                  headerRow1.push({});
+                  headerRow1.push({ text: 'OVERALL', colSpan: 3, bold: true, alignment: 'center', fillColor: '#e2e8f0', fontSize: 9 });
+                  headerRow1.push({}); headerRow1.push({});
 
                   const headerRow2: any[] = [{}, {}];
-                  exams.forEach(() => {
-                      headerRow2.push({ text: 'Max', fontSize: 8, alignment: 'center' });
-                      headerRow2.push({ text: 'Obt', fontSize: 8, alignment: 'center' });
+                  sortedExams.forEach(() => {
+                      headerRow2.push({ text: 'Max', fontSize: 7, alignment: 'center', bold: true, fillColor: '#f8fafc' });
+                      headerRow2.push({ text: 'Obt', fontSize: 7, alignment: 'center', bold: true, fillColor: '#f8fafc' });
                   });
-                  headerRow2.push({ text: 'Total', fontSize: 8, alignment: 'center', fillColor: '#f1f5f9' });
-                  headerRow2.push({ text: '%', fontSize: 8, alignment: 'center', fillColor: '#f1f5f9' });
-                  headerRow2.push({ text: 'Grd', fontSize: 8, alignment: 'center', fillColor: '#f1f5f9' });
+                  headerRow2.push({ text: 'Total', fontSize: 7, alignment: 'center', fillColor: '#f8fafc', bold: true });
+                  headerRow2.push({ text: '%', fontSize: 7, alignment: 'center', fillColor: '#f8fafc', bold: true });
+                  headerRow2.push({ text: 'Grd', fontSize: 7, alignment: 'center', fillColor: '#f8fafc', bold: true });
 
                   tableBody.push(headerRow1);
                   tableBody.push(headerRow2);
 
-                  // Data Rows
                   subjects.forEach(sub => {
                       const stats = helpers.calculateSubjectStats(marks, sub.id);
-                      
-                      // Row 1 (Subjective + Subject Name)
-                      const row1: any[] = [
-                          { text: sub.name, rowSpan: 2, bold: true, alignment: 'left', margin: [0, 5] },
-                          { text: 'SUB', fontSize: 8, alignment: 'center', color: '#64748b' }
+                      const rowSub: any[] = [
+                          { text: sub.name, rowSpan: 2, bold: true, alignment: 'left', margin: [5, 4], fontSize: 9 },
+                          { text: 'SUB', fontSize: 7, alignment: 'center', color: '#64748b', margin: [0, 4] }
                       ];
-                      
-                      exams.forEach(ex => {
-                          row1.push({ text: String(helpers.getMaxMark(marks, ex.id, sub.id, 'Subjective')), fontSize: 8, alignment: 'center', color: '#94a3b8' });
-                          row1.push({ text: String(helpers.getMark(marks, ex.id, sub.id, 'Subjective')), fontSize: 9, bold: true, alignment: 'center' });
+                      sortedExams.forEach(ex => {
+                          rowSub.push({ text: String(helpers.getMaxMark(marks, ex.id, sub.id, 'Subjective')), fontSize: 7, alignment: 'center', color: '#94a3b8', margin: [0, 4] });
+                          rowSub.push({ text: String(helpers.getMark(marks, ex.id, sub.id, 'Subjective')), fontSize: 8, bold: true, alignment: 'center', margin: [0, 4] });
                       });
+                      rowSub.push({ text: `${stats.obtained} / ${stats.max}`, rowSpan: 2, alignment: 'center', margin: [0, 8], fontSize: 8, bold: true });
+                      rowSub.push({ text: `${stats.percentage}%`, rowSpan: 2, alignment: 'center', margin: [0, 8], fontSize: 8, bold: true, color: '#1e3a8a' });
+                      rowSub.push({ text: stats.grade, rowSpan: 2, alignment: 'center', margin: [0, 8], fontSize: 9, bold: true, color: '#312e81' });
+                      tableBody.push(rowSub);
 
-                      row1.push({ text: `${stats.obtained} / ${stats.max}`, rowSpan: 2, alignment: 'center', margin: [0, 5], fontSize: 9 });
-                      row1.push({ text: `${stats.percentage}%`, rowSpan: 2, alignment: 'center', margin: [0, 5], fontSize: 9, bold: true });
-                      row1.push({ text: stats.grade, rowSpan: 2, alignment: 'center', margin: [0, 5], fontSize: 9, bold: true, color: '#312e81' });
-
-                      tableBody.push(row1);
-
-                      // Row 2 (Objective)
-                      const row2: any[] = [
-                          {},
-                          { text: 'OBJ', fontSize: 8, alignment: 'center', color: '#64748b' }
-                      ];
-                      
-                      exams.forEach(ex => {
-                          row2.push({ text: String(helpers.getMaxMark(marks, ex.id, sub.id, 'Objective')), fontSize: 8, alignment: 'center', color: '#94a3b8' });
-                          row2.push({ text: String(helpers.getMark(marks, ex.id, sub.id, 'Objective')), fontSize: 9, bold: true, alignment: 'center' });
+                      const rowObj: any[] = [{}, { text: 'OBJ', fontSize: 7, alignment: 'center', color: '#64748b', margin: [0, 4] }];
+                      sortedExams.forEach(ex => {
+                          rowObj.push({ text: String(helpers.getMaxMark(marks, ex.id, sub.id, 'Objective')), fontSize: 7, alignment: 'center', color: '#94a3b8', margin: [0, 4] });
+                          rowObj.push({ text: String(helpers.getMark(marks, ex.id, sub.id, 'Objective')), fontSize: 8, bold: true, alignment: 'center', margin: [0, 4] });
                       });
-                      
-                      // Empty cells for rowspan
-                      row2.push({});
-                      row2.push({});
-                      row2.push({});
-
-                      tableBody.push(row2);
+                      rowObj.push({}); rowObj.push({}); rowObj.push({});
+                      tableBody.push(rowObj);
                   });
 
-                  // Width definition
-                  const widths = [subWidth, typeWidth];
-                  exams.forEach(() => { widths.push(examWidth); widths.push(examWidth); });
-                  widths.push(35); widths.push(35); widths.push(30);
+                  const widthsArr = [colSubject, colType];
+                  sortedExams.forEach(() => { widthsArr.push(colExamCell); widthsArr.push(colExamCell); });
+                  widthsArr.push(colOverall * 0.4); widthsArr.push(colOverall * 0.35); widthsArr.push(colOverall * 0.25);
 
                   pageContent.push({
-                      table: {
-                          headerRows: 2,
-                          widths: widths,
-                          body: tableBody
+                      table: { headerRows: 2, widths: widthsArr, body: tableBody },
+                      layout: {
+                          hLineWidth: (i: number) => (i === 0 || i === 2) ? 1 : 0.5,
+                          vLineWidth: () => 0.5,
+                          hLineColor: (i: number) => (i === 0 || i === 2) ? '#1e1b4b' : '#cbd5e1',
+                          vLineColor: () => '#cbd5e1'
                       },
-                      layout: 'lightHorizontalLines',
-                      fontSize: tblBlock.style.fontSize * scale, // scale font
-                      absolutePosition: { x: tblBlock.x * scale, y: tblBlock.y * scale }
+                      absolutePosition: { x: tblBlock.x * pdfScale, y: tblBlock.y * pdfScale }
                   });
               }
 
-              // Remarks
               const remBlock = getB('remarks');
               if (remBlock) {
                   const remText = subjects.map(s => {
@@ -759,108 +722,63 @@ export const ScoreCard: React.FC = () => {
                   }).filter(Boolean).join('\n') || "Progressing well. Consistent efforts will lead to better results.";
 
                   pageContent.push({
-                      stack: [
-                          { text: 'REMARKS', fontSize: 8, bold: true, color: '#312e81', margin: [0, 0, 0, 2] },
-                          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: remBlock.w * scale, y2: 0, lineWidth: 1, lineColor: '#e2e8f0' }] },
-                          { text: remText, fontSize: remBlock.style.fontSize * scale, italics: true, color: '#475569', margin: [0, 5, 0, 0] }
-                      ],
-                      absolutePosition: { x: remBlock.x * scale, y: remBlock.y * scale },
-                      width: remBlock.w * scale
+                      stack: [{ text: 'REMARKS', fontSize: 8, bold: true, color: '#312e81', margin: [0, 0, 0, 4], decoration: 'underline' }, { text: remText, fontSize: 8.5, italics: true, color: '#475569', lineHeight: 1.2 }],
+                      absolutePosition: { x: remBlock.x * pdfScale, y: remBlock.y * pdfScale }, width: remBlock.w * pdfScale
                   });
               }
 
-              // Overall Result
               const ovrBlock = getB('overall');
               if (ovrBlock) {
                   pageContent.push({
-                      stack: [
-                          { text: 'FINAL RESULT', fontSize: 8, bold: true, alignment: 'center', color: '#64748b' },
-                          { text: overallStats.overallGrade, fontSize: 24, bold: true, alignment: 'center', color: '#312e81', margin: [0, 5] },
-                          { 
-                              columns: [
-                                  { text: `${overallStats.totalPct}%`, alignment: 'center', bold: true },
-                                  { text: overallStats.overallGrade === 'F' ? 'FAIL' : 'PASS', alignment: 'center', bold: true }
-                              ]
-                          }
-                      ],
-                      absolutePosition: { x: ovrBlock.x * scale, y: ovrBlock.y * scale },
-                      width: ovrBlock.w * scale
+                      stack: [{ text: 'FINAL RESULT', fontSize: 9, bold: true, alignment: 'center', color: '#64748b', margin: [0, 5] }, { text: overallStats.overallGrade, fontSize: 36, bold: true, alignment: 'center', color: '#1e1b4b', margin: [0, 5] }, { columns: [{ text: `${overallStats.totalPct}% AGGREGATE`, alignment: 'center', bold: true, fontSize: 10, color: '#1e3a8a' }, { text: overallStats.overallGrade === 'F' ? 'FAIL' : 'PROMOTED', alignment: 'center', bold: true, fontSize: 10, color: '#1e3a8a' }] }],
+                      absolutePosition: { x: ovrBlock.x * pdfScale, y: ovrBlock.y * pdfScale }, width: ovrBlock.w * pdfScale
                   });
               }
 
-              // Signatures
               const sigBlock = getB('signatures');
               if (sigBlock) {
                   pageContent.push({
                       columns: [
-                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:80, y2:0}]}, {text:'Class Teacher', fontSize:9, margin:[0,5]}] },
-                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:80, y2:0}]}, {text:'Principal', fontSize:9, margin:[0,5]}] },
-                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:80, y2:0}]}, {text:'Parent', fontSize:9, margin:[0,5]}] }
+                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Parents', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' },
+                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Mentors', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' },
+                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Center Head', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' }
                       ],
-                      absolutePosition: { x: sigBlock.x * scale, y: sigBlock.y * scale },
-                      width: sigBlock.w * scale,
-                      alignment: 'center'
+                      absolutePosition: { x: sigBlock.x * pdfScale, y: sigBlock.y * pdfScale }, width: sigBlock.w * pdfScale
                   });
               }
 
               content.push(pageContent);
-              
-              // Page Break for all except last
-              if (i < studentsToPrint.length - 1) {
-                  content.push({ text: '', pageBreak: 'after' });
-              }
+              if (i < studentsToPrint.length - 1) content.push({ text: '', pageBreak: 'after' });
           }
 
-          const docDefinition = {
-              pageSize: 'A4',
-              pageMargins: [0, 0, 0, 0],
-              content: content,
-              defaultStyle: {
-                  font: 'Roboto'
-              }
-          };
-
+          const docDefinition = { pageSize: 'A4', pageMargins: [0, 0, 0, 0], content: content, defaultStyle: { font: 'Roboto' } };
           pdfMake.createPdf(docDefinition).download(`Score_Cards_${new Date().getTime()}.pdf`);
           showToast("PDF generated successfully", 'success');
-
       } catch (e: any) { 
           console.error(e);
           showToast("PDF Error: " + e.message, 'error'); 
-      } finally { 
-          setDownloading(false); 
-      }
+      } finally { setDownloading(false); }
   };
 
-  // --- Asset Management ---
   const saveSchoolAssets = async () => {
       setIsSavingAssets(true);
       try {
           await DataService.updateSchoolInfo(schoolInfo);
           showToast("School branding saved successfully", 'success');
-      } catch (e) {
-          showToast("Failed to save branding. Check database.", 'error');
-      } finally {
-          setIsSavingAssets(false);
-      }
+      } catch (e) { showToast("Failed to save branding.", 'error'); } finally { setIsSavingAssets(false); }
   };
 
   const handleGlobalAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'watermark') => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
         showToast(`Uploading ${type}...`, 'info');
-        // Upload to bucket
         const publicUrl = await DataService.uploadFile(file, 'branding');
         setSchoolInfo(prev => ({ ...prev, [type]: publicUrl }));
         showToast("Upload successful. Don't forget to save.", 'success');
-    } catch (error: any) {
-        console.error(error);
-        showToast("Upload failed", 'error');
-    }
+    } catch (error: any) { showToast("Upload failed", 'error'); }
   };
 
-  // --- Layout Engine Logic ---
   const handleDragStart = (e: React.MouseEvent, id: string) => {
       e.stopPropagation();
       if(activeTab !== 'layout') return;
@@ -887,9 +805,7 @@ export const ScoreCard: React.FC = () => {
 
   const handleMouseMove = (e: React.MouseEvent) => {
       if (activeTab !== 'layout') return;
-      
-      const scaleFactor = 0.65; // Matches the visual scale in Layout Tab
-
+      const scaleFactor = 0.65;
       if (isDragging.current && selectedBlockId) {
           const dx = (e.clientX - dragStart.current.x) / scaleFactor;
           const dy = (e.clientY - dragStart.current.y) / scaleFactor;
@@ -901,11 +817,7 @@ export const ScoreCard: React.FC = () => {
       }
   };
 
-  const handleMouseUp = () => {
-      isDragging.current = false;
-      isResizing.current = false;
-  };
-
+  const handleMouseUp = () => { isDragging.current = false; isResizing.current = false; };
   const updateBlockStyle = (key: string, value: any) => {
       if(!selectedBlockId) return;
       setLayout(prev => prev.map(b => b.id === selectedBlockId ? { ...b, style: { ...b.style, [key]: value } } : b));
@@ -944,25 +856,25 @@ export const ScoreCard: React.FC = () => {
               {activeTab === 'bulk' && bulkViewMode === 'selection' ? (
                   <button onClick={handleGeneratePreview} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold">Preview All</button>
               ) : (
-                  <button onClick={handleDownloadPDF} disabled={downloading} className="bg-slate-100 px-4 py-2 rounded-xl flex items-center gap-2 text-slate-800 font-medium hover:bg-slate-200 shadow-sm">
-                      {downloading ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />} PDF
-                  </button>
+                  <>
+                    <button onClick={handlePrintInNewTab} className="bg-slate-100 px-4 py-2 rounded-xl flex items-center gap-2 text-slate-800 font-medium hover:bg-slate-200 shadow-sm transition-all active:scale-95">
+                        <Printer size={18} /> Print
+                    </button>
+                    <button onClick={handleDownloadPDF} disabled={downloading} className="bg-slate-100 px-4 py-2 rounded-xl flex items-center gap-2 text-slate-800 font-medium hover:bg-slate-200 shadow-sm transition-all active:scale-95">
+                        {downloading ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />} PDF
+                    </button>
+                  </>
               )}
           </div>
       </div>
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 relative flex justify-center overflow-auto">
+      <div className="flex-1 relative flex justify-center overflow-auto pb-12">
         {activeTab === 'layout' ? (
             <div className="flex gap-6 w-full h-[calc(100vh-14rem)]">
-                {/* Editor Canvas (Left Side) */}
                 <div className="flex-1 bg-slate-200/50 rounded-xl overflow-auto border border-slate-300 flex justify-center p-8 relative">
-                    <div className="relative shadow-2xl bg-white origin-top" style={{ width: '794px', height: '1123px', transform: 'scale(0.65)' }}>
-                        {/* Decorative Background for Editor */}
-                        <div className="absolute inset-0 border-[3px] border-indigo-900 m-3 pointer-events-none z-0 rounded-sm opacity-50"></div>
-                        
-                        {/* Render Draggable Blocks */}
+                    <div className="relative origin-top" style={{ width: '794px', height: '1123px' }}>
                         {layout.filter(l => l.isVisible).map(block => (
                              <div 
                                 key={block.id}
@@ -973,54 +885,29 @@ export const ScoreCard: React.FC = () => {
                                 style={{ left: block.x, top: block.y, width: block.w, height: block.h }}
                                 onMouseDown={(e) => handleDragStart(e, block.id)}
                              >
-                                 {/* Helper Label */}
                                  <div className="absolute -top-5 left-0 bg-blue-500 text-white text-[10px] px-1.5 rounded-t opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                                      {block.label} ({Math.round(block.w)}x{Math.round(block.h)})
                                  </div>
-                                 
-                                 {/* Content Preview */}
                                  <div className="w-full h-full pointer-events-none overflow-hidden">
-                                     <BlockRenderer 
-                                        block={block}
-                                        schoolInfo={schoolInfo}
-                                        student={dummyStudent}
-                                        marks={[]} 
-                                        exams={exams} 
-                                        subjects={subjects} 
-                                        helpers={helpers} 
-                                        overallStats={overallStats}
-                                     />
+                                     <BlockRenderer block={block} schoolInfo={schoolInfo} student={dummyStudent} marks={[]} exams={exams} subjects={subjects} helpers={helpers} overallStats={overallStats} />
                                  </div>
-
-                                 {/* Resize Handle */}
                                  {selectedBlockId === block.id && (
-                                     <div 
-                                        className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize z-50 shadow-sm"
-                                        onMouseDown={(e) => handleResizeStart(e, block.id)}
-                                     ></div>
+                                     <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize z-50 shadow-sm" onMouseDown={(e) => handleResizeStart(e, block.id)}></div>
                                  )}
                              </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Layout Sidebar (Right Side) */}
                 <div className="w-80 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden shrink-0">
                     <div className="p-2 border-b border-slate-200 grid grid-cols-2 gap-1 bg-slate-50">
-                        <button 
-                            onClick={() => setLayoutSidebarTab('structure')}
-                            className={clsx("flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-colors", layoutSidebarTab === 'structure' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-100")}
-                        >
+                        <button onClick={() => setLayoutSidebarTab('structure')} className={clsx("flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-colors", layoutSidebarTab === 'structure' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-100")}>
                             <Layout size={14} /> Structure
                         </button>
-                        <button 
-                            onClick={() => setLayoutSidebarTab('branding')}
-                            className={clsx("flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-colors", layoutSidebarTab === 'branding' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-100")}
-                        >
+                        <button onClick={() => setLayoutSidebarTab('branding')} className={clsx("flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-colors", layoutSidebarTab === 'branding' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-100")}>
                             <School size={14} /> Branding
                         </button>
                     </div>
-
                     <div className="flex-1 overflow-y-auto p-4 space-y-6">
                         {layoutSidebarTab === 'structure' && (
                             <>
@@ -1030,20 +917,13 @@ export const ScoreCard: React.FC = () => {
                                         {layout.map(block => (
                                             <div key={block.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
                                                 <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                                                    <Move size={14} className="text-slate-400" />
-                                                    {block.label}
+                                                    <Move size={14} className="text-slate-400" /> {block.label}
                                                 </div>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={block.isVisible} 
-                                                    onChange={() => setLayout(prev => prev.map(b => b.id === block.id ? { ...b, isVisible: !b.isVisible } : b))}
-                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                                />
+                                                <input type="checkbox" checked={block.isVisible} onChange={() => setLayout(prev => prev.map(b => b.id === block.id ? { ...b, isVisible: !b.isVisible } : b))} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-
                                 {selectedBlockId && (
                                     <div className="border-t border-slate-200 pt-4">
                                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -1052,43 +932,23 @@ export const ScoreCard: React.FC = () => {
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="block text-xs text-slate-500 mb-1">Font Size (px)</label>
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full p-2 border border-slate-300 rounded text-sm text-slate-900"
-                                                    value={layout.find(b => b.id === selectedBlockId)?.style.fontSize}
-                                                    onChange={(e) => updateBlockStyle('fontSize', parseInt(e.target.value))}
-                                                />
+                                                <input type="number" className="w-full p-2 border border-slate-300 rounded text-sm text-slate-900" value={layout.find(b => b.id === selectedBlockId)?.style.fontSize} onChange={(e) => updateBlockStyle('fontSize', parseInt(e.target.value))} />
                                             </div>
                                             <div>
                                                 <label className="block text-xs text-slate-500 mb-1">Text Color</label>
                                                 <div className="flex items-center gap-2">
-                                                    <input 
-                                                        type="color" 
-                                                        className="h-8 w-12 p-0.5 border border-slate-300 rounded cursor-pointer"
-                                                        value={layout.find(b => b.id === selectedBlockId)?.style.color}
-                                                        onChange={(e) => updateBlockStyle('color', e.target.value)}
-                                                    />
+                                                    <input type="color" className="h-8 w-12 p-0.5 border border-slate-300 rounded cursor-pointer" value={layout.find(b => b.id === selectedBlockId)?.style.color} onChange={(e) => updateBlockStyle('color', e.target.value)} />
                                                     <span className="text-xs text-slate-600 font-mono">{layout.find(b => b.id === selectedBlockId)?.style.color}</span>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button 
-                                                    onClick={() => updateBlockStyle('textAlign', 'left')} 
-                                                    className={clsx("flex-1 py-1 text-xs border rounded hover:bg-slate-100", layout.find(b => b.id === selectedBlockId)?.style.textAlign === 'left' && "bg-slate-200 font-bold")}
-                                                >Left</button>
-                                                <button 
-                                                    onClick={() => updateBlockStyle('textAlign', 'center')} 
-                                                    className={clsx("flex-1 py-1 text-xs border rounded hover:bg-slate-100", layout.find(b => b.id === selectedBlockId)?.style.textAlign === 'center' && "bg-slate-200 font-bold")}
-                                                >Center</button>
-                                                <button 
-                                                    onClick={() => updateBlockStyle('textAlign', 'right')} 
-                                                    className={clsx("flex-1 py-1 text-xs border rounded hover:bg-slate-100", layout.find(b => b.id === selectedBlockId)?.style.textAlign === 'right' && "bg-slate-200 font-bold")}
-                                                >Right</button>
+                                                {['left', 'center', 'right'].map(pos => (
+                                                    <button key={pos} onClick={() => updateBlockStyle('textAlign', pos)} className={clsx("flex-1 py-1 text-xs border rounded hover:bg-slate-100 uppercase", layout.find(b => b.id === selectedBlockId)?.style.textAlign === pos && "bg-slate-200 font-bold")}>{pos}</button>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
                                 )}
-                                
                                 <div className="pt-4 border-t border-slate-200">
                                      <button onClick={() => setLayout(DEFAULT_LAYOUT)} className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-lg transition-colors">
                                          <RotateCcw size={14} /> Reset Layout
@@ -1096,38 +956,25 @@ export const ScoreCard: React.FC = () => {
                                 </div>
                             </>
                         )}
-
                         {layoutSidebarTab === 'branding' && (
                              <div className="space-y-4 animate-in slide-in-from-left duration-300">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">School Name</label>
-                                    <input type="text" className="w-full p-2 border border-slate-300 rounded-lg text-sm text-slate-900 bg-white" value={schoolInfo.name} onChange={(e) => setSchoolInfo(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tagline</label>
-                                    <input type="text" className="w-full p-2 border border-slate-300 rounded-lg text-sm text-slate-900 bg-white" value={schoolInfo.tagline} onChange={(e) => setSchoolInfo(prev => ({ ...prev, tagline: e.target.value }))} />
-                                </div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">School Name</label><input type="text" className="w-full p-2 border border-slate-300 rounded-lg text-sm text-slate-900 bg-white" value={schoolInfo.name} onChange={(e) => setSchoolInfo(prev => ({ ...prev, name: e.target.value.toUpperCase() }))} /></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tagline</label><input type="text" className="w-full p-2 border border-slate-300 rounded-lg text-sm text-slate-900 bg-white" value={schoolInfo.tagline} onChange={(e) => setSchoolInfo(prev => ({ ...prev, tagline: e.target.value }))} /></div>
                                 <div className="pt-2">
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Primary Logo</label>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-                                            {schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" /> : <ImageIcon size={24} className="text-slate-300" />}
-                                        </div>
+                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">{schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" /> : <ImageIcon size={24} className="text-slate-300" />}</div>
                                         <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-900">
-                                            <Upload size={14} /> Upload Logo
-                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'logo')} />
+                                            <Upload size={14} /> Upload Logo <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'logo')} />
                                         </label>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Watermark</label>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-                                            {schoolInfo.watermark ? <img src={schoolInfo.watermark} className="w-full h-full object-contain opacity-30" /> : <Droplet size={24} className="text-slate-300" />}
-                                        </div>
+                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">{schoolInfo.watermark ? <img src={schoolInfo.watermark} className="w-full h-full object-contain opacity-30" /> : <Droplet size={24} className="text-slate-300" />}</div>
                                         <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-50">
-                                            <Upload size={14} /> Upload
-                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'watermark')} />
+                                            <Upload size={14} /> Upload <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'watermark')} />
                                         </label>
                                     </div>
                                 </div>
@@ -1140,43 +987,30 @@ export const ScoreCard: React.FC = () => {
                 </div>
             </div>
         ) : (
-            <div ref={reportContainerRef} className="flex justify-center">
+            <div ref={reportContainerRef} className="flex justify-center w-full">
                 {activeTab === 'single' ? (
                     currentStudent && (
-                        <CustomizableScoreCard 
-                            student={currentStudent} 
-                            marks={studentMarks} 
-                            exams={exams} 
-                            subjects={subjects} 
-                            helpers={helpers} 
-                            schoolInfo={schoolInfo} 
-                            layout={layout}
-                        />
+                        <CustomizableScoreCard student={currentStudent} marks={studentMarks} exams={exams} subjects={subjects} helpers={helpers} schoolInfo={schoolInfo} layout={layout} isPreview={true} scale={0.9} />
                     )
                 ) : (
                     bulkViewMode === 'selection' ? (
-                        <div className="w-full bg-white rounded-xl border border-slate-200 p-4 no-print max-w-5xl">
-                            <div className="flex justify-between mb-4"><h3 className="font-bold text-slate-800">Select Students</h3><button onClick={toggleSelectAll} className="text-blue-600 text-xs font-bold">Toggle All</button></div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div className="w-full bg-white rounded-xl border border-slate-200 p-6 no-print max-w-5xl shadow-sm">
+                            <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-slate-800 text-lg">Select Students</h3><button onClick={toggleSelectAll} className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors">Toggle All</button></div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {students.map(s => (
-                                    <div key={s.id} onClick={() => { const n = new Set(bulkSelection); if(n.has(s.id)) n.delete(s.id); else n.add(s.id); setBulkSelection(n); }} className={clsx("p-3 border rounded-lg cursor-pointer flex items-center gap-3", bulkSelection.has(s.id) ? "bg-indigo-50 border-indigo-200" : "bg-white border-slate-200")}>
-                                        {bulkSelection.has(s.id) ? <CheckSquare className="text-indigo-600" /> : <Square className="text-slate-300"/>} <span className="text-slate-800 font-medium">{s.fullName}</span>
+                                    <div key={s.id} onClick={() => { const n = new Set(bulkSelection); if(n.has(s.id)) n.delete(s.id); else n.add(s.id); setBulkSelection(n); }} className={clsx("p-4 border rounded-xl cursor-pointer flex items-center gap-3 transition-all", bulkSelection.has(s.id) ? "bg-indigo-50 border-indigo-500 shadow-sm" : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm")}>
+                                        {bulkSelection.has(s.id) ? <CheckSquare className="text-indigo-600" /> : <Square className="text-slate-300"/>} <span className="text-slate-800 font-bold text-sm">{s.fullName}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center gap-8 w-full">
                             {students.filter(s => bulkSelection.has(s.id)).map(s => (
                                 <CustomizableScoreCard 
-                                    key={s.id} 
-                                    student={s} 
-                                    marks={bulkMarks[s.id] || []} 
-                                    exams={exams} 
-                                    subjects={subjects} 
-                                    helpers={helpers} 
-                                    schoolInfo={schoolInfo} 
-                                    layout={layout}
+                                    key={s.id} student={s} marks={bulkMarks[s.id] || []} 
+                                    exams={exams} subjects={subjects} helpers={helpers} 
+                                    schoolInfo={schoolInfo} layout={layout} isPreview={true} scale={0.8}
                                 />
                             ))}
                         </div>
