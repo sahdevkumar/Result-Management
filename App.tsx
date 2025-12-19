@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
@@ -7,6 +8,7 @@ import { Reports } from './pages/Reports';
 import { Exams } from './pages/Exams';
 import { Settings } from './pages/Settings';
 import { MarksEntry } from './pages/MarksEntry';
+import { NonAcademicEntry } from './pages/NonAcademicEntry';
 import { TemplateDesign } from './pages/TemplateDesign';
 import { PrintReport } from './pages/PrintReport';
 import { ScoreCard } from './pages/ScoreCard';
@@ -21,23 +23,16 @@ const Layout: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    // Initial check
     const checkStatus = async () => {
       const status = await DataService.checkConnection();
       setIsOnline(status);
     };
     checkStatus();
-
-    // Poll every 10 seconds
     const interval = setInterval(checkStatus, 10000);
-
-    // Listen for browser online/offline events
     const handleOnline = () => checkStatus();
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
@@ -96,6 +91,7 @@ const App: React.FC = () => {
             <Route path="exams" element={<Exams />} />
             <Route path="marks" element={<MarksEntry />} />
             <Route path="remarks" element={<TeachersRemarks />} /> 
+            <Route path="non-academic" element={<NonAcademicEntry />} /> 
             <Route path="scorecard" element={<ScoreCard />} /> 
             <Route path="reports" element={<Reports />} />
             <Route path="templates" element={<TemplateDesign />} />

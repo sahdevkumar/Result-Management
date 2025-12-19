@@ -1,9 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { DataService } from '../services/dataService';
-import { Student, Exam, Subject, MarkRecord, SchoolClass } from '../types';
-import { Printer, Search, Trophy, Medal, Star, Loader2, Users, CreditCard, RefreshCw, CheckSquare, Square, ArrowLeft, FileText, Download, Image as ImageIcon, Layout, Move, Maximize, Type, Palette, Save, RotateCcw, Upload, Droplet, School } from 'lucide-react';
+import { Student, Exam, Subject, MarkRecord, SchoolClass, NonAcademicRecord } from '../types';
 import { useToast } from '../components/ToastContext';
+import { 
+  Printer, Trophy, Loader2, Download, Layout, Move, Palette, Save, 
+  RotateCcw, Upload, Droplet, School, CheckSquare, Square, ImageIcon, 
+  Activity, UserCheck, MessageSquare, Handshake, ChevronDown, Info, MessageSquareQuote
+} from 'lucide-react';
 import clsx from 'clsx';
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
@@ -16,12 +20,12 @@ if (pdfMake.vfs === undefined && pdfFonts && pdfFonts.pdfMake && pdfFonts.pdfMak
 // --- Types for Layout Engine ---
 interface LayoutBlock {
     id: string;
-    type: 'school_name' | 'tagline' | 'logo' | 'header_info' | 'student_info' | 'marks_table' | 'remarks' | 'signatures' | 'custom_text';
+    type: 'school_name' | 'tagline' | 'logo' | 'header_info' | 'student_info' | 'marks_table' | 'non_academic' | 'remarks' | 'signatures' | 'custom_text';
     label: string;
     x: number;
     y: number;
     w: number;
-    h: number; // h might be 'auto' for table
+    h: number; 
     style: {
         fontSize: number;
         color: string;
@@ -35,13 +39,14 @@ interface LayoutBlock {
 }
 
 const DEFAULT_LAYOUT: LayoutBlock[] = [
-    { id: 'logo', type: 'logo', label: 'School Logo', x: 347, y: 30, w: 100, h: 100, style: { fontSize: 0, color: '', border: false }, isVisible: true },
-    { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 140, w: 698, h: 30, style: { fontSize: 12, color: '#64748b', textAlign: 'center' }, isVisible: true },
-    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 190, w: 698, h: 140, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
-    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 350, w: 698, h: 400, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
-    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 770, w: 340, h: 150, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
-    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 770, w: 338, h: 150, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f1f5f9', padding: 20 }, isVisible: true },
-    { id: 'signatures', type: 'signatures', label: 'Signatures', x: 48, y: 990, w: 698, h: 100, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
+    { id: 'logo', type: 'logo', label: 'School Logo', x: 347, y: 20, w: 100, h: 60, style: { fontSize: 0, color: '', border: false }, isVisible: true },
+    { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 90, w: 698, h: 30, style: { fontSize: 12, color: '#64748b', textAlign: 'center' }, isVisible: true },
+    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 135, w: 698, h: 110, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
+    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 265, w: 698, h: 440, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
+    { id: 'non_academic', type: 'non_academic', label: 'Non-Academic Skills', x: 48, y: 725, w: 698, h: 80, style: { fontSize: 10, color: '#1e293b', border: true }, isVisible: true },
+    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 820, w: 340, h: 140, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
+    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 820, w: 338, h: 140, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f8fafc', padding: 20 }, isVisible: true },
+    { id: 'signatures', type: 'signatures', label: 'Signatures', x: 48, y: 980, w: 698, h: 80, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
 ];
 
 // --- Helper Hook for Score Calculations ---
@@ -148,13 +153,13 @@ const BlockRenderer: React.FC<{
     schoolInfo: { name: string, tagline: string, logo: string, watermark: string };
     student: Student;
     marks: MarkRecord[];
+    nonAcademic: NonAcademicRecord | null;
     exams: Exam[];
     subjects: Subject[];
     helpers: ReturnType<typeof useScoreCalculations>;
     overallStats: { totalPct: string, overallGrade: string };
-}> = ({ block, schoolInfo, student, marks, exams, subjects, helpers, overallStats }) => {
+}> = ({ block, schoolInfo, student, marks, nonAcademic, exams, subjects, helpers, overallStats }) => {
     
-    // Derived values for table
     const WIDTH_SUBJECT = 180;
     const WIDTH_TYPE = 40;
     const WIDTH_RESULT = 140; 
@@ -170,46 +175,46 @@ const BlockRenderer: React.FC<{
             return (
                 <div className="w-full h-full flex justify-center items-end px-2 font-sans text-slate-500 border-b border-slate-200 pb-1" style={{ fontSize: `${block.style.fontSize}px` }}>
                     <div className="text-center">
-                         <span className="bg-indigo-900 text-white px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mx-2">Report Card</span>
-                         <span className="font-bold uppercase">2024-2025</span>
+                         <span className="bg-indigo-900 text-white px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mx-2">Academic Report</span>
+                         <span className="font-bold uppercase tracking-widest text-slate-700">SESSION 2024-2025</span>
                     </div>
                 </div>
             );
         case 'student_info':
             return (
-                <div className={clsx("w-full h-full font-sans bg-white/60", block.style.border && "border border-slate-300 rounded-lg overflow-hidden")}>
-                     <div className="grid grid-cols-4 bg-slate-100 border-b border-slate-300">
-                        <div className="p-2 border-r border-slate-300 text-[10px] font-bold text-slate-500 uppercase">Student Name</div>
-                        <div className="p-2 border-r border-slate-300 col-span-3 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.fullName}</div>
+                <div className={clsx("w-full font-sans bg-white/60", block.style.border && "border border-slate-300 rounded-lg overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.02)] flex flex-col")}>
+                     <div className="grid grid-cols-4 bg-[#f8fafc] border-b border-slate-200">
+                        <div className="p-2.5 border-r border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Student Name</div>
+                        <div className="p-2.5 border-r border-slate-200 col-span-3 font-black text-[#1e1b4b] flex items-center uppercase" style={{ fontSize: `${block.style.fontSize}px` }}>{student.fullName}</div>
                     </div>
-                    <div className="grid grid-cols-4 border-b border-slate-300">
-                        <div className="p-2 border-r border-slate-300 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">Parent's Name</div>
-                        <div className="p-2 border-r border-slate-300 col-span-3 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.guardianName}</div>
+                    <div className="grid grid-cols-4 border-b border-slate-200">
+                        <div className="p-2.5 border-r border-slate-200 bg-white text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Parent's Name</div>
+                        <div className="p-2.5 border-r border-slate-200 col-span-3 font-bold text-slate-800 flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.guardianName}</div>
                     </div>
                     <div className="grid grid-cols-4">
-                        <div className="p-2 border-r border-slate-300 bg-slate-100 text-[10px] font-bold text-slate-500 uppercase">Class / Section</div>
-                        <div className="p-2 border-r border-slate-300 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.className} - {student.section}</div>
-                        <div className="p-2 border-r border-slate-300 bg-slate-100 text-[10px] font-bold text-slate-500 uppercase">Roll Number</div>
-                        <div className="p-2 font-bold text-slate-800 font-mono" style={{ fontSize: `${block.style.fontSize}px` }}>{student.rollNumber}</div>
+                        <div className="p-2.5 border-r border-slate-200 bg-[#f8fafc] text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Class / Section</div>
+                        <div className="p-2.5 border-r border-slate-200 font-bold text-slate-800 flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.className} - {student.section}</div>
+                        <div className="p-2.5 border-r border-slate-200 bg-[#f8fafc] text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Roll Number</div>
+                        <div className="p-2.5 font-bold text-slate-800 font-mono flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.rollNumber}</div>
                     </div>
                 </div>
             );
         case 'marks_table':
             return (
-                <div className="w-full h-full font-sans overflow-hidden">
-                     <div className="rounded-t-lg bg-indigo-900 text-white p-1.5 text-center text-[10px] font-bold uppercase tracking-wider">Academic Performance</div>
-                     <div className="border border-slate-400">
-                        <table className="w-full text-center border-collapse table-fixed bg-white/70">
+                <div className="w-full font-sans overflow-hidden flex flex-col">
+                     <div className="rounded-t-lg bg-[#1e1b4b] text-white p-2 text-center text-[10px] font-black uppercase tracking-widest shrink-0">Academic Performance</div>
+                     <div className="border-x border-b border-slate-400 shadow-sm overflow-hidden bg-white/70">
+                        <table className="w-full text-center border-collapse table-fixed">
                              <thead>
-                                <tr className="bg-slate-100 text-slate-800 font-bold uppercase tracking-wider" style={{ fontSize: '10px' }}>
+                                <tr className="bg-[#f1f5f9] text-[#1e1b4b] font-black uppercase tracking-wider" style={{ fontSize: '10px' }}>
                                     <th style={{width: `${WIDTH_SUBJECT}px`}} rowSpan={2} className="py-2 px-2 border-r border-slate-400">Subject</th>
                                     <th style={{width: `${WIDTH_TYPE}px`}} rowSpan={2} className="py-2 px-1 border-r border-slate-400">Type</th>
                                     {exams.map(exam => (
                                         <th key={exam.id} colSpan={2} className="py-1 px-1 border-r border-slate-400 border-b border-slate-400">{exam.name}</th>
                                     ))}
-                                    <th style={{width: `${WIDTH_RESULT}px`}} colSpan={3} className="py-2 bg-slate-200">Overall</th>
+                                    <th style={{width: `${WIDTH_RESULT}px`}} colSpan={3} className="py-2 bg-[#e2e8f0]">Overall</th>
                                 </tr>
-                                <tr className="bg-slate-50 text-slate-600 uppercase font-bold border-b border-slate-400" style={{ fontSize: '9px' }}>
+                                <tr className="bg-[#f8fafc] text-slate-500 uppercase font-black border-b border-slate-400" style={{ fontSize: '8px' }}>
                                     {exams.map(exam => (
                                         <React.Fragment key={exam.id}>
                                             <th className="py-1 border-r border-slate-400">Max</th>
@@ -227,24 +232,24 @@ const BlockRenderer: React.FC<{
                                     return (
                                     <React.Fragment key={sub.id}>
                                         <tr className="border-b border-slate-300">
-                                            <td rowSpan={2} className="border-r border-slate-400 font-bold text-left px-3 py-1 align-middle text-black bg-white/50">{sub.name}</td>
-                                            <td className="border-r border-slate-400 text-[9px] text-slate-500 font-bold uppercase tracking-wider text-center py-1 bg-slate-50/50">SUB</td>
+                                            <td rowSpan={2} className="border-r border-slate-400 font-black text-left px-3 py-1.5 align-middle text-[#1e1b4b] bg-white/50 uppercase">{sub.name}</td>
+                                            <td className="border-r border-slate-400 text-[8px] text-slate-400 font-black uppercase tracking-widest text-center py-1.5 bg-[#f8fafc]/80">SUB</td>
                                             {exams.map(exam => (
                                                 <React.Fragment key={exam.id}>
-                                                    <td className="border-r border-slate-300 text-slate-400 py-1">{helpers.getMaxMark(marks, exam.id, sub.id, 'Subjective')}</td>
-                                                    <td className="border-r border-slate-400 font-bold py-1 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Subjective')}</td>
+                                                    <td className="border-r border-slate-200 text-slate-300 py-1.5 text-xs">{helpers.getMaxMark(marks, exam.id, sub.id, 'Subjective')}</td>
+                                                    <td className="border-r border-slate-400 font-bold py-1.5 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Subjective')}</td>
                                                 </React.Fragment>
                                             ))}
-                                            <td rowSpan={2} className="border-r border-slate-400 font-bold text-slate-800 align-middle bg-slate-100/30">{stats.obtained} / {stats.max}</td>
-                                            <td rowSpan={2} className="border-r border-slate-400 font-bold text-indigo-800 align-middle bg-slate-100/30">{stats.percentage}%</td>
-                                            <td rowSpan={2} className="font-bold text-indigo-900 align-middle bg-slate-100/30">{stats.grade}</td>
+                                            <td rowSpan={2} className="border-r border-slate-400 font-bold text-slate-800 align-middle bg-[#f1f5f9]/40">{stats.obtained} / {stats.max}</td>
+                                            <td rowSpan={2} className="border-r border-slate-400 font-bold text-indigo-700 align-middle bg-[#f1f5f9]/40">{stats.percentage}%</td>
+                                            <td rowSpan={2} className="font-black text-[#1e1b4b] align-middle bg-[#f1f5f9]/40">{stats.grade}</td>
                                         </tr>
                                         <tr className="border-b border-slate-400">
-                                            <td className="border-r border-slate-400 text-[9px] text-slate-500 font-bold uppercase tracking-wider text-center py-1 bg-slate-50/50">OBJ</td>
+                                            <td className="border-r border-slate-400 text-[8px] text-slate-400 font-black uppercase tracking-widest text-center py-1.5 bg-[#f8fafc]/80">OBJ</td>
                                             {exams.map(exam => (
                                                 <React.Fragment key={exam.id}>
-                                                     <td className="border-r border-slate-300 text-slate-400 py-1">{helpers.getMaxMark(marks, exam.id, sub.id, 'Objective')}</td>
-                                                     <td className="border-r border-slate-400 font-bold py-1 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Objective')}</td>
+                                                     <td className="border-r border-slate-200 text-slate-300 py-1.5 text-xs">{helpers.getMaxMark(marks, exam.id, sub.id, 'Objective')}</td>
+                                                     <td className="border-r border-slate-400 font-bold py-1.5 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Objective')}</td>
                                                 </React.Fragment>
                                             ))}
                                         </tr>
@@ -255,36 +260,74 @@ const BlockRenderer: React.FC<{
                      </div>
                 </div>
             );
+        case 'non_academic':
+            return (
+                <div className={clsx("w-full h-full font-sans overflow-hidden bg-white flex flex-col", block.style.border && "border border-slate-300 rounded-lg")}>
+                     <div className="bg-[#f1f5f9] text-[#1e1b4b] p-1.5 text-center text-[10px] font-black uppercase tracking-widest border-b border-slate-300 shrink-0">Non-Academic Performance & Traits</div>
+                     <div className="grid grid-cols-4 flex-1 divide-x divide-slate-200">
+                        <div className="flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors">
+                            <Activity size={16} className="text-indigo-600 mb-0.5" />
+                            <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Attendance</span>
+                            <span className="text-xs font-black text-[#1e1b4b] mt-0.5">{nonAcademic?.attendance || 'N/A'}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors">
+                            <UserCheck size={16} className="text-emerald-600 mb-0.5" />
+                            <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Discipline</span>
+                            <span className="text-xs font-black text-[#1e1b4b] mt-0.5">{nonAcademic?.discipline || 'A'}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors">
+                            <MessageSquare size={16} className="text-amber-600 mb-0.5" />
+                            <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Communication</span>
+                            <span className="text-xs font-black text-[#1e1b4b] mt-0.5">{nonAcademic?.communication || 'A'}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors">
+                            <Handshake size={16} className="text-blue-600 mb-0.5" />
+                            <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Participation</span>
+                            <span className="text-xs font-black text-[#1e1b4b] mt-0.5">{nonAcademic?.participation || 'A'}</span>
+                        </div>
+                     </div>
+                </div>
+            );
         case 'remarks':
             return (
                 <div className={clsx("w-full h-full bg-white/80 overflow-hidden", block.style.border && "border border-slate-300 rounded-lg p-3")}>
-                     <h4 className="font-bold text-indigo-900 uppercase text-[10px] mb-2 border-b border-indigo-200 pb-1">Remarks</h4>
-                     <div className="italic text-slate-600" style={{ fontSize: `${block.style.fontSize}px` }}>
+                     <h4 className="font-black text-[#1e1b4b] uppercase text-[9px] mb-2 border-b border-slate-200 pb-1 flex items-center gap-1">
+                        <MessageSquareQuote size={10} /> Teacher's Comments
+                     </h4>
+                     <div className="text-slate-600 space-y-1" style={{ fontSize: `${block.style.fontSize}px` }}>
                         {subjects.map(s => {
                             const r = helpers.getRemark(marks, s.id);
-                            return r ? <div key={s.id}><span className="font-bold text-xs">{s.name}:</span> {r}</div> : null;
+                            return r ? (
+                                <div key={s.id} className="leading-tight">
+                                    <span className="font-bold text-[9px] text-[#1e1b4b] uppercase">{s.name}:</span> <span className="italic text-slate-500 font-medium">"{r}"</span>
+                                </div>
+                            ) : null;
                         })}
-                        {!subjects.some(s => helpers.getRemark(marks, s.id)) && "Progressing well. Consistent efforts will lead to better results."}
+                        {!subjects.some(s => helpers.getRemark(marks, s.id)) && <p className="italic text-slate-400 text-[10px]">Consistent performance and active participation noted across sessions.</p>}
                      </div>
                 </div>
             );
         case 'custom_text':
             return (
-                <div className={clsx("w-full h-full flex flex-col justify-center items-center text-center", block.style.border && "border border-slate-300 rounded-lg")} style={{ backgroundColor: block.style.backgroundColor }}>
-                     <div className="text-[10px] uppercase text-slate-500 font-bold mb-1">Final Result</div>
-                     <div className="font-bold text-indigo-900 mb-2" style={{ fontSize: `${block.style.fontSize * 2.5}px` }}>{overallStats.overallGrade}</div>
-                     <div className="flex justify-center gap-4 text-sm font-bold text-slate-700 border-t border-slate-300 pt-2 w-full px-4">
+                <div className={clsx("w-full h-full flex flex-col justify-between items-center text-center", block.style.border && "border border-slate-300 rounded-lg")} style={{ backgroundColor: block.style.backgroundColor }}>
+                     <div className="w-full pt-2">
+                        <div className="text-[8px] uppercase text-slate-400 font-black tracking-widest mb-0.5">Final Outcome</div>
+                        <div className="font-black text-[#1e1b4b] drop-shadow-sm" style={{ fontSize: `56px`, lineHeight: 1 }}>{overallStats.overallGrade}</div>
+                     </div>
+                     <div className="w-full flex justify-center gap-4 text-[9px] font-black text-[#1e1b4b] bg-slate-100 py-1.5 rounded-b-lg tracking-widest">
                          <span>{overallStats.totalPct}%</span>
-                         <span>{overallStats.overallGrade === 'F' ? 'Fail' : 'Pass'}</span>
+                         <span className={clsx(overallStats.overallGrade === 'F' ? 'text-red-600' : 'text-emerald-600')}>
+                            {overallStats.overallGrade === 'F' ? 'FAIL' : 'PASS'}
+                         </span>
                      </div>
                 </div>
             );
         case 'signatures':
             return (
                 <div className="w-full h-full flex justify-between items-end px-4" style={{ fontSize: `${block.style.fontSize}px` }}>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase text-[9px]">Parents</p></div>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase text-[9px]">Mentors</p></div>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase text-[9px]">Center Head</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black text-slate-400 uppercase text-[8px] tracking-widest">Guardian's Sign</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black text-slate-400 uppercase text-[8px] tracking-widest">Class Teacher</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black text-slate-400 uppercase text-[8px] tracking-widest">Principal</p></div>
                 </div>
             );
         default:
@@ -296,6 +339,7 @@ const BlockRenderer: React.FC<{
 const CustomizableScoreCard: React.FC<{
     student: Student;
     marks: MarkRecord[];
+    nonAcademic: NonAcademicRecord | null;
     exams: Exam[];
     subjects: Subject[];
     helpers: ReturnType<typeof useScoreCalculations>;
@@ -303,7 +347,7 @@ const CustomizableScoreCard: React.FC<{
     layout: LayoutBlock[];
     scale?: number;
     isPreview?: boolean;
-}> = ({ student, marks, exams, subjects, helpers, schoolInfo, layout, scale = 1, isPreview = false }) => {
+}> = ({ student, marks, nonAcademic, exams, subjects, helpers, schoolInfo, layout, scale = 1, isPreview = false }) => {
     const overallStats = helpers.calculateOverall(marks);
     const PAGE_WIDTH = 794;
     const PAGE_HEIGHT = 1123;
@@ -318,12 +362,11 @@ const CustomizableScoreCard: React.FC<{
                 style={{ width: `${PAGE_WIDTH}px`, height: `${PAGE_HEIGHT}px`, transform: `scale(${scale})`, transformOrigin: 'top left' }}
             >
                  {schoolInfo.watermark && (
-                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-10 grayscale">
+                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03] grayscale">
                          <img src={schoolInfo.watermark} className="w-[80%] max-h-[80%] object-contain" />
                      </div>
                  )}
 
-                 {/* Render Layout Blocks */}
                  {layout.filter(l => l.isVisible).map(block => (
                      <div 
                         key={block.id}
@@ -335,6 +378,7 @@ const CustomizableScoreCard: React.FC<{
                             schoolInfo={schoolInfo}
                             student={student}
                             marks={marks}
+                            nonAcademic={nonAcademic}
                             exams={exams}
                             subjects={subjects}
                             helpers={helpers}
@@ -358,11 +402,13 @@ export const ScoreCard: React.FC = () => {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [studentMarks, setStudentMarks] = useState<MarkRecord[]>([]);
+  const [studentNonAcademic, setStudentNonAcademic] = useState<NonAcademicRecord | null>(null);
   
   const [activeTab, setActiveTab] = useState<'single' | 'bulk' | 'layout'>('single');
   const [bulkViewMode, setBulkViewMode] = useState<'selection' | 'preview'>('selection');
   const [bulkSelection, setBulkSelection] = useState<Set<string>>(new Set());
   const [bulkMarks, setBulkMarks] = useState<Record<string, MarkRecord[]>>({});
+  const [bulkNonAcademic, setBulkNonAcademic] = useState<Record<string, NonAcademicRecord>>({});
   
   // Layout State
   const [layout, setLayout] = useState<LayoutBlock[]>(DEFAULT_LAYOUT);
@@ -375,10 +421,9 @@ export const ScoreCard: React.FC = () => {
   
   const { showToast } = useToast();
   const helpers = useScoreCalculations(exams, subjects);
-  const overallStats = helpers.calculateOverall([]); // Dummy stats for editor
+  const overallStats = helpers.calculateOverall([]); 
   const reportContainerRef = useRef<HTMLDivElement>(null);
 
-  // Drag & Drop Refs
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const blockStart = useRef({ x: 0, y: 0 });
@@ -435,6 +480,7 @@ export const ScoreCard: React.FC = () => {
         }
         setSelectedStudentId('');
         setBulkMarks({});
+        setBulkNonAcademic({});
         setBulkViewMode('selection');
     };
     loadStudents();
@@ -442,28 +488,43 @@ export const ScoreCard: React.FC = () => {
 
   useEffect(() => {
     if(!selectedStudentId) return;
-    const loadMarks = async () => {
+    const loadData = async () => {
         try {
-            const marks = await DataService.getStudentHistory(selectedStudentId);
+            const [marks, nonAcademicRecords] = await Promise.all([
+                DataService.getStudentHistory(selectedStudentId),
+                // We fetch all records for current exam context
+                exams.length > 0 ? DataService.getNonAcademicRecords(exams[0].id) : Promise.resolve([])
+            ]);
             setStudentMarks(marks);
+            const studentRecord = nonAcademicRecords.find(r => r.studentId === selectedStudentId);
+            setStudentNonAcademic(studentRecord || null);
         } catch(e) {
-            showToast("Failed to load marks", 'error');
+            showToast("Failed to load data", 'error');
         }
     };
-    loadMarks();
-  }, [selectedStudentId]);
+    loadData();
+  }, [selectedStudentId, exams]);
 
   const handleGeneratePreview = async () => {
       if (bulkSelection.size === 0) { showToast("Select at least one student", 'error'); return; }
       setLoadingBulk(true);
       try {
           const marksData: Record<string, MarkRecord[]> = {};
+          const nonAcademicData: Record<string, NonAcademicRecord> = {};
           const selectedStudents = students.filter(s => bulkSelection.has(s.id));
+          
+          const examId = exams.length > 0 ? exams[0].id : '';
+          const nonAcadRecords = examId ? await DataService.getNonAcademicRecords(examId) : [];
+
           await Promise.all(selectedStudents.map(async (student) => {
               const history = await DataService.getStudentHistory(student.id);
               marksData[student.id] = history;
+              const na = nonAcadRecords.find(r => r.studentId === student.id);
+              if (na) nonAcademicData[student.id] = na;
           }));
+
           setBulkMarks(marksData);
+          setBulkNonAcademic(nonAcademicData);
           setBulkViewMode('preview');
       } catch (e) { showToast("Failed to load bulk data", 'error'); } finally { setLoadingBulk(false); }
   };
@@ -477,7 +538,6 @@ export const ScoreCard: React.FC = () => {
           return;
       }
 
-      // Clone nodes and remove transform styles for scale 1
       const clonedContainer = reportContainerRef.current.cloneNode(true) as HTMLElement;
       
       const wrappers = clonedContainer.querySelectorAll('.scorecard-wrapper');
@@ -504,7 +564,7 @@ export const ScoreCard: React.FC = () => {
               <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
               <style>
                 @media print {
-                  body { background: white; margin: 0; padding: 0; }
+                  body { background: white !important; margin: 0; padding: 0; }
                   .no-print { display: none !important; }
                   .scorecard-wrapper { page-break-after: always; margin: 0 !important; display: block !important; }
                   * { 
@@ -561,9 +621,7 @@ export const ScoreCard: React.FC = () => {
             resolve("");
         }
       };
-      img.onerror = error => {
-        resolve("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
-      };
+      img.onerror = () => resolve("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
       img.src = url;
     });
   };
@@ -574,10 +632,8 @@ export const ScoreCard: React.FC = () => {
           const pdfScale = 0.75;
           const PAGE_W = 595.28;
           const PAGE_H = 841.89;
-
           let logoBase64 = "";
           let watermarkBase64 = "";
-          
           if (schoolInfo.logo) logoBase64 = await getBase64ImageFromURL(schoolInfo.logo);
           if (schoolInfo.watermark) watermarkBase64 = await getBase64ImageFromURL(schoolInfo.watermark);
 
@@ -595,6 +651,8 @@ export const ScoreCard: React.FC = () => {
           for (let i = 0; i < studentsToPrint.length; i++) {
               const student = studentsToPrint[i];
               const marks = activeTab === 'single' ? studentMarks : (bulkMarks[student.id] || []);
+              const na = activeTab === 'single' ? studentNonAcademic : (bulkNonAcademic[student.id] || null);
+              
               const overallStats = helpers.calculateOverall(marks);
               const getB = (type: string) => layout.find(l => l.type === type && l.isVisible);
               const pageContent: any[] = [];
@@ -714,6 +772,26 @@ export const ScoreCard: React.FC = () => {
                   });
               }
 
+              const naBlock = getB('non_academic');
+              if (naBlock) {
+                  pageContent.push({
+                      table: {
+                          widths: ['25%', '25%', '25%', '25%'],
+                          body: [
+                              [{ text: 'NON-ACADEMIC PERFORMANCE', colSpan: 4, alignment: 'center', bold: true, fontSize: 7, fillColor: '#f1f5f9' }, {}, {}, {}],
+                              [
+                                { stack: [{ text: 'ATTENDANCE', fontSize: 6, color: '#64748b' }, { text: na?.attendance || 'N/A', bold: true, fontSize: 9 }], alignment: 'center' },
+                                { stack: [{ text: 'DISCIPLINE', fontSize: 6, color: '#64748b' }, { text: na?.discipline || 'A', bold: true, fontSize: 9 }], alignment: 'center' },
+                                { stack: [{ text: 'COMMUNICATION', fontSize: 6, color: '#64748b' }, { text: na?.communication || 'A', bold: true, fontSize: 9 }], alignment: 'center' },
+                                { stack: [{ text: 'PARTICIPATION', fontSize: 6, color: '#64748b' }, { text: na?.participation || 'A', bold: true, fontSize: 9 }], alignment: 'center' }
+                              ]
+                          ]
+                      },
+                      layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cbd5e1', vLineColor: () => '#cbd5e1' },
+                      absolutePosition: { x: naBlock.x * pdfScale, y: naBlock.y * pdfScale }, width: naBlock.w * pdfScale
+                  });
+              }
+
               const remBlock = getB('remarks');
               if (remBlock) {
                   const remText = subjects.map(s => {
@@ -730,7 +808,7 @@ export const ScoreCard: React.FC = () => {
               const ovrBlock = getB('overall');
               if (ovrBlock) {
                   pageContent.push({
-                      stack: [{ text: 'FINAL RESULT', fontSize: 9, bold: true, alignment: 'center', color: '#64748b', margin: [0, 5] }, { text: overallStats.overallGrade, fontSize: 36, bold: true, alignment: 'center', color: '#1e1b4b', margin: [0, 5] }, { columns: [{ text: `${overallStats.totalPct}% AGGREGATE`, alignment: 'center', bold: true, fontSize: 10, color: '#1e3a8a' }, { text: overallStats.overallGrade === 'F' ? 'FAIL' : 'PROMOTED', alignment: 'center', bold: true, fontSize: 10, color: '#1e3a8a' }] }],
+                      stack: [{ text: 'FINAL OUTCOME', fontSize: 9, bold: true, alignment: 'center', color: '#64748b', margin: [0, 5] }, { text: overallStats.overallGrade, fontSize: 36, bold: true, alignment: 'center', color: '#1e1b4b', margin: [0, 5] }, { columns: [{ text: `${overallStats.totalPct}% AGGREGATE`, alignment: 'center', bold: true, fontSize: 10, color: '#1e3a8a' }, { text: overallStats.overallGrade === 'F' ? 'FAIL' : 'PROMOTED', alignment: 'center', bold: true, fontSize: 10, color: '#1e3a8a' }] }],
                       absolutePosition: { x: ovrBlock.x * pdfScale, y: ovrBlock.y * pdfScale }, width: ovrBlock.w * pdfScale
                   });
               }
@@ -739,9 +817,9 @@ export const ScoreCard: React.FC = () => {
               if (sigBlock) {
                   pageContent.push({
                       columns: [
-                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Parents', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' },
-                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Mentors', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' },
-                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Center Head', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' }
+                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Parent\'s Sig', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' },
+                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Mentor', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' },
+                          { stack: [{canvas:[{type:'line', x1:0, y1:0, x2:90, y2:0, lineWidth: 1, lineColor: '#94a3b8'}]}, {text:'Head of Center', fontSize:9, bold: true, margin:[0,5], color: '#64748b'}], alignment: 'center' }
                       ],
                       absolutePosition: { x: sigBlock.x * pdfScale, y: sigBlock.y * pdfScale }, width: sigBlock.w * pdfScale
                   });
@@ -833,7 +911,7 @@ export const ScoreCard: React.FC = () => {
         <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
             <button onClick={() => setActiveTab('single')} className={clsx("px-4 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'single' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50")}>Single</button>
             <button onClick={() => setActiveTab('bulk')} className={clsx("px-4 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'bulk' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50")}>Bulk</button>
-            <button onClick={() => setActiveTab('layout')} className={clsx("px-4 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'layout' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50")}>
+            <button onClick={() => setActiveTab('layout')} className={clsx("px-4 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'layout' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100")}>
                 <Layout size={16} /> Layout
             </button>
         </div>
@@ -889,7 +967,7 @@ export const ScoreCard: React.FC = () => {
                                      {block.label} ({Math.round(block.w)}x{Math.round(block.h)})
                                  </div>
                                  <div className="w-full h-full pointer-events-none overflow-hidden">
-                                     <BlockRenderer block={block} schoolInfo={schoolInfo} student={dummyStudent} marks={[]} exams={exams} subjects={subjects} helpers={helpers} overallStats={overallStats} />
+                                     <BlockRenderer block={block} schoolInfo={schoolInfo} student={dummyStudent} marks={[]} nonAcademic={null} exams={exams} subjects={subjects} helpers={helpers} overallStats={overallStats} />
                                  </div>
                                  {selectedBlockId === block.id && (
                                      <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize z-50 shadow-sm" onMouseDown={(e) => handleResizeStart(e, block.id)}></div>
@@ -987,10 +1065,16 @@ export const ScoreCard: React.FC = () => {
                 </div>
             </div>
         ) : (
-            <div ref={reportContainerRef} className="flex justify-center w-full">
+            <div ref={reportContainerRef} className="flex flex-col items-center w-full">
                 {activeTab === 'single' ? (
                     currentStudent && (
-                        <CustomizableScoreCard student={currentStudent} marks={studentMarks} exams={exams} subjects={subjects} helpers={helpers} schoolInfo={schoolInfo} layout={layout} isPreview={true} scale={0.9} />
+                        <CustomizableScoreCard 
+                            student={currentStudent} 
+                            marks={studentMarks} 
+                            nonAcademic={studentNonAcademic}
+                            exams={exams} subjects={subjects} helpers={helpers} 
+                            schoolInfo={schoolInfo} layout={layout} isPreview={true} scale={0.9} 
+                        />
                     )
                 ) : (
                     bulkViewMode === 'selection' ? (
@@ -1008,7 +1092,9 @@ export const ScoreCard: React.FC = () => {
                         <div className="flex flex-col items-center gap-8 w-full">
                             {students.filter(s => bulkSelection.has(s.id)).map(s => (
                                 <CustomizableScoreCard 
-                                    key={s.id} student={s} marks={bulkMarks[s.id] || []} 
+                                    key={s.id} student={s} 
+                                    marks={bulkMarks[s.id] || []} 
+                                    nonAcademic={bulkNonAcademic[s.id] || null}
                                     exams={exams} subjects={subjects} helpers={helpers} 
                                     schoolInfo={schoolInfo} layout={layout} isPreview={true} scale={0.8}
                                 />

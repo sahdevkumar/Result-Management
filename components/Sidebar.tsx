@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, BarChart3, Settings, LogOut, PenTool, X, Wifi, WifiOff, Palette, Printer, CreditCard, MessageSquareQuote, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, BarChart3, Settings, LogOut, PenTool, X, Wifi, WifiOff, Palette, Printer, CreditCard, MessageSquareQuote, GraduationCap, Activity } from 'lucide-react';
 import clsx from 'clsx';
 
 interface SidebarProps {
@@ -18,6 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline }) =
     { icon: FileText, label: 'Exams', path: '/exams' },
     { icon: PenTool, label: 'Marks Entry', path: '/marks' },
     { icon: MessageSquareQuote, label: "Teacher's Remark", path: '/remarks' },
+    { icon: Activity, label: 'Non Academic', path: '/non-academic' },
     { icon: CreditCard, label: 'Score Card', path: '/scorecard' },
     { icon: BarChart3, label: 'Reports', path: '/reports' },
     { icon: Palette, label: 'Template Design', path: '/templates' },
@@ -27,7 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline }) =
   const isSettingsActive = ['/settings', '/subjects', '/classes'].includes(location.pathname);
 
   const handleNavClick = () => {
-    // Close sidebar on mobile when a link is clicked
     if (window.innerWidth < 1024) {
       onClose();
     }

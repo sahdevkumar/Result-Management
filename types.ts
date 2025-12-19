@@ -71,6 +71,16 @@ export interface MarkRecord {
   attended: boolean;
 }
 
+export interface NonAcademicRecord {
+  studentId: string;
+  examId: string;
+  attendance: string; // e.g. "45/50"
+  discipline: string; // Grade A-E
+  communication: string; // formerly leadership
+  participation: string; // formerly arts/culture
+  updatedAt?: string;
+}
+
 export interface TeacherRemark {
   studentId: string;
   examId: string;
