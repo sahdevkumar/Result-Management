@@ -37,8 +37,8 @@ interface LayoutBlock {
 const DEFAULT_LAYOUT: LayoutBlock[] = [
     { id: 'logo', type: 'logo', label: 'School Logo', x: 347, y: 30, w: 100, h: 100, style: { fontSize: 0, color: '', border: false }, isVisible: true },
     { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 140, w: 698, h: 30, style: { fontSize: 12, color: '#64748b', textAlign: 'center' }, isVisible: true },
-    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 185, w: 698, h: 145, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
-    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 345, w: 698, h: 400, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
+    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 190, w: 698, h: 140, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
+    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 350, w: 698, h: 400, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
     { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 770, w: 340, h: 150, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
     { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 770, w: 338, h: 150, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f1f5f9', padding: 20 }, isVisible: true },
     { id: 'signatures', type: 'signatures', label: 'Signatures', x: 48, y: 990, w: 698, h: 100, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
@@ -179,17 +179,17 @@ const BlockRenderer: React.FC<{
             return (
                 <div className={clsx("w-full h-full font-sans bg-white/60", block.style.border && "border border-slate-300 rounded-lg overflow-hidden")}>
                      <div className="grid grid-cols-4 bg-slate-100 border-b border-slate-300">
-                        <div className="p-2 border-r border-slate-300 text-xs font-bold text-slate-500 uppercase">Student Name</div>
+                        <div className="p-2 border-r border-slate-300 text-[10px] font-bold text-slate-500 uppercase">Student Name</div>
                         <div className="p-2 border-r border-slate-300 col-span-3 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.fullName}</div>
                     </div>
                     <div className="grid grid-cols-4 border-b border-slate-300">
-                        <div className="p-2 border-r border-slate-300 bg-slate-50 text-xs font-bold text-slate-500 uppercase">Parent's Name</div>
+                        <div className="p-2 border-r border-slate-300 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">Parent's Name</div>
                         <div className="p-2 border-r border-slate-300 col-span-3 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.guardianName}</div>
                     </div>
                     <div className="grid grid-cols-4">
-                        <div className="p-2 border-r border-slate-300 bg-slate-100 text-xs font-bold text-slate-500 uppercase">Class / Section</div>
+                        <div className="p-2 border-r border-slate-300 bg-slate-100 text-[10px] font-bold text-slate-500 uppercase">Class / Section</div>
                         <div className="p-2 border-r border-slate-300 font-bold text-slate-800" style={{ fontSize: `${block.style.fontSize}px` }}>{student.className} - {student.section}</div>
-                        <div className="p-2 border-r border-slate-300 bg-slate-100 text-xs font-bold text-slate-500 uppercase">Roll Number</div>
+                        <div className="p-2 border-r border-slate-300 bg-slate-100 text-[10px] font-bold text-slate-500 uppercase">Roll Number</div>
                         <div className="p-2 font-bold text-slate-800 font-mono" style={{ fontSize: `${block.style.fontSize}px` }}>{student.rollNumber}</div>
                     </div>
                 </div>
@@ -197,7 +197,7 @@ const BlockRenderer: React.FC<{
         case 'marks_table':
             return (
                 <div className="w-full h-full font-sans overflow-hidden">
-                     <div className="rounded-t-lg bg-indigo-900 text-white p-1.5 text-center text-xs font-bold uppercase tracking-wider">Academic Performance</div>
+                     <div className="rounded-t-lg bg-indigo-900 text-white p-1.5 text-center text-[10px] font-bold uppercase tracking-wider">Academic Performance</div>
                      <div className="border border-slate-400">
                         <table className="w-full text-center border-collapse table-fixed bg-white/70">
                              <thead>
@@ -258,7 +258,7 @@ const BlockRenderer: React.FC<{
         case 'remarks':
             return (
                 <div className={clsx("w-full h-full bg-white/80 overflow-hidden", block.style.border && "border border-slate-300 rounded-lg p-3")}>
-                     <h4 className="font-bold text-indigo-900 uppercase text-xs mb-2 border-b border-indigo-200 pb-1">Remarks</h4>
+                     <h4 className="font-bold text-indigo-900 uppercase text-[10px] mb-2 border-b border-indigo-200 pb-1">Remarks</h4>
                      <div className="italic text-slate-600" style={{ fontSize: `${block.style.fontSize}px` }}>
                         {subjects.map(s => {
                             const r = helpers.getRemark(marks, s.id);
@@ -271,7 +271,7 @@ const BlockRenderer: React.FC<{
         case 'custom_text':
             return (
                 <div className={clsx("w-full h-full flex flex-col justify-center items-center text-center", block.style.border && "border border-slate-300 rounded-lg")} style={{ backgroundColor: block.style.backgroundColor }}>
-                     <div className="text-xs uppercase text-slate-500 font-bold mb-1">Final Result</div>
+                     <div className="text-[10px] uppercase text-slate-500 font-bold mb-1">Final Result</div>
                      <div className="font-bold text-indigo-900 mb-2" style={{ fontSize: `${block.style.fontSize * 2.5}px` }}>{overallStats.overallGrade}</div>
                      <div className="flex justify-center gap-4 text-sm font-bold text-slate-700 border-t border-slate-300 pt-2 w-full px-4">
                          <span>{overallStats.totalPct}%</span>
@@ -282,9 +282,9 @@ const BlockRenderer: React.FC<{
         case 'signatures':
             return (
                 <div className="w-full h-full flex justify-between items-end px-4" style={{ fontSize: `${block.style.fontSize}px` }}>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Parents</p></div>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Mentors</p></div>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase">Center Head</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase text-[9px]">Parents</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase text-[9px]">Mentors</p></div>
+                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1"></div><p className="font-bold text-slate-500 uppercase text-[9px]">Center Head</p></div>
                 </div>
             );
         default:
@@ -292,7 +292,7 @@ const BlockRenderer: React.FC<{
     }
 };
 
-// --- Customizable Score Card Component (For DOM Preview) ---
+// --- Customizable Score Card Component ---
 const CustomizableScoreCard: React.FC<{
     student: Student;
     marks: MarkRecord[];
@@ -310,11 +310,11 @@ const CustomizableScoreCard: React.FC<{
     
     return (
         <div 
-            className="scorecard-wrapper"
-            style={{ width: `${PAGE_WIDTH * scale}px`, height: `${PAGE_HEIGHT * scale}px`, marginBottom: isPreview ? '2rem' : '0' }}
+            className="scorecard-wrapper flex-shrink-0"
+            style={{ width: `${PAGE_WIDTH * scale}px`, height: `${PAGE_HEIGHT * scale}px`, marginBottom: isPreview ? '2.5rem' : '0' }}
         >
             <div 
-                className={clsx("scorecard-page relative bg-white shadow-2xl mx-auto overflow-hidden", !isPreview && "pointer-events-none")} 
+                className={clsx("scorecard-page relative bg-white shadow-2xl overflow-hidden", !isPreview && "pointer-events-none")} 
                 style={{ width: `${PAGE_WIDTH}px`, height: `${PAGE_HEIGHT}px`, transform: `scale(${scale})`, transformOrigin: 'top left' }}
             >
                  {schoolInfo.watermark && (
@@ -480,7 +480,6 @@ export const ScoreCard: React.FC = () => {
       // Clone nodes and remove transform styles for scale 1
       const clonedContainer = reportContainerRef.current.cloneNode(true) as HTMLElement;
       
-      // Fix transformations for printing
       const wrappers = clonedContainer.querySelectorAll('.scorecard-wrapper');
       wrappers.forEach((wrapper: any) => {
           wrapper.style.width = '794px';
@@ -507,7 +506,7 @@ export const ScoreCard: React.FC = () => {
                 @media print {
                   body { background: white; margin: 0; padding: 0; }
                   .no-print { display: none !important; }
-                  .scorecard-wrapper { page-break-after: always; margin: 0 !important; }
+                  .scorecard-wrapper { page-break-after: always; margin: 0 !important; display: block !important; }
                   * { 
                     -webkit-print-color-adjust: exact !important; 
                     print-color-adjust: exact !important; 
@@ -524,6 +523,7 @@ export const ScoreCard: React.FC = () => {
                     transition: all 0.2s;
                 }
                 .print-now-btn:hover { background: #4338ca; transform: translateY(-1px); }
+                .print-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
               </style>
             </head>
             <body>
@@ -874,7 +874,7 @@ export const ScoreCard: React.FC = () => {
         {activeTab === 'layout' ? (
             <div className="flex gap-6 w-full h-[calc(100vh-14rem)]">
                 <div className="flex-1 bg-slate-200/50 rounded-xl overflow-auto border border-slate-300 flex justify-center p-8 relative">
-                    <div className="relative origin-top" style={{ width: '794px', height: '1123px' }}>
+                    <div className="relative origin-top" style={{ width: '794px', height: '1123px', transform: 'scale(0.65)' }}>
                         {layout.filter(l => l.isVisible).map(block => (
                              <div 
                                 key={block.id}
