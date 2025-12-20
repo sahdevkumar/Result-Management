@@ -6,7 +6,7 @@ import { useToast } from '../components/ToastContext';
 import { 
   Printer, Trophy, Loader2, Download, Layout, Move, Palette, Save, 
   RotateCcw, Upload, Droplet, School, CheckSquare, Square, ImageIcon, 
-  Activity, UserCheck, MessageSquare, Handshake, ChevronDown, Info, MessageSquareQuote
+  Activity, UserCheck, MessageSquare, Handshake, ChevronDown, Info
 } from 'lucide-react';
 import clsx from 'clsx';
 import pdfMake from "pdfmake/build/pdfmake";
@@ -39,13 +39,13 @@ interface LayoutBlock {
 }
 
 const DEFAULT_LAYOUT: LayoutBlock[] = [
-    { id: 'logo', type: 'logo', label: 'School Logo', x: 347, y: 20, w: 100, h: 60, style: { fontSize: 0, color: '', border: false }, isVisible: true },
-    { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 90, w: 698, h: 30, style: { fontSize: 12, color: '#64748b', textAlign: 'center' }, isVisible: true },
-    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 135, w: 698, h: 110, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
-    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 265, w: 698, h: 440, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
-    { id: 'non_academic', type: 'non_academic', label: 'Non-Academic Skills', x: 48, y: 725, w: 698, h: 80, style: { fontSize: 10, color: '#1e293b', border: true }, isVisible: true },
-    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 820, w: 340, h: 140, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
-    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 820, w: 338, h: 140, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f8fafc', padding: 20 }, isVisible: true },
+    { id: 'logo', type: 'logo', label: 'School Logo', x: 347, y: 25, w: 100, h: 70, style: { fontSize: 0, color: '', border: false }, isVisible: true },
+    { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 105, w: 698, h: 30, style: { fontSize: 12, color: '#64748b', textAlign: 'center' }, isVisible: true },
+    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 150, w: 698, h: 95, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
+    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 270, w: 698, h: 440, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
+    { id: 'non_academic', type: 'non_academic', label: 'Non-Academic Skills', x: 48, y: 720, w: 698, h: 80, style: { fontSize: 10, color: '#1e293b', border: true }, isVisible: true },
+    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 815, w: 340, h: 140, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
+    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 815, w: 338, h: 140, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f8fafc', padding: 20 }, isVisible: true },
     { id: 'signatures', type: 'signatures', label: 'Signatures', x: 48, y: 980, w: 698, h: 80, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
 ];
 
@@ -168,7 +168,7 @@ const BlockRenderer: React.FC<{
         case 'logo':
             return (
                 <div className="w-full h-full flex items-center justify-center overflow-hidden">
-                     {schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" /> : <Trophy size={Math.min(block.w, block.h) * 0.8} className="text-indigo-900" />}
+                     {schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" alt="Logo" /> : <Trophy size={Math.min(block.w, block.h) * 0.8} className="text-indigo-900" />}
                 </div>
             );
         case 'header_info':
@@ -184,25 +184,25 @@ const BlockRenderer: React.FC<{
             return (
                 <div className={clsx("w-full font-sans bg-white/60", block.style.border && "border border-slate-300 rounded-lg overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.02)] flex flex-col")}>
                      <div className="grid grid-cols-4 bg-[#f8fafc] border-b border-slate-200">
-                        <div className="p-2.5 border-r border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Student Name</div>
-                        <div className="p-2.5 border-r border-slate-200 col-span-3 font-black text-[#1e1b4b] flex items-center uppercase" style={{ fontSize: `${block.style.fontSize}px` }}>{student.fullName}</div>
+                        <div className="p-2 border-r border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Student Name</div>
+                        <div className="p-2 border-r border-slate-200 col-span-3 font-black text-[#1e1b4b] flex items-center uppercase" style={{ fontSize: `${block.style.fontSize}px` }}>{student.fullName}</div>
                     </div>
                     <div className="grid grid-cols-4 border-b border-slate-200">
-                        <div className="p-2.5 border-r border-slate-200 bg-white text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Parent's Name</div>
-                        <div className="p-2.5 border-r border-slate-200 col-span-3 font-bold text-slate-800 flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.guardianName}</div>
+                        <div className="p-2 border-r border-slate-200 bg-white text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Parent's Name</div>
+                        <div className="p-2 border-r border-slate-200 col-span-3 font-bold text-slate-800 flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.guardianName}</div>
                     </div>
                     <div className="grid grid-cols-4">
-                        <div className="p-2.5 border-r border-slate-200 bg-[#f8fafc] text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Class / Section</div>
-                        <div className="p-2.5 border-r border-slate-200 font-bold text-slate-800 flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.className} - {student.section}</div>
-                        <div className="p-2.5 border-r border-slate-200 bg-[#f8fafc] text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Roll Number</div>
-                        <div className="p-2.5 font-bold text-slate-800 font-mono flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.rollNumber}</div>
+                        <div className="p-2 border-r border-slate-200 bg-[#f8fafc] text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Class / Section</div>
+                        <div className="p-2 border-r border-slate-200 font-bold text-slate-800 flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.className} - {student.section}</div>
+                        <div className="p-2 border-r border-slate-200 bg-[#f8fafc] text-[9px] font-black text-slate-400 uppercase tracking-tight flex items-center">Roll Number</div>
+                        <div className="p-2 font-bold text-slate-800 font-mono flex items-center" style={{ fontSize: `${block.style.fontSize}px` }}>{student.rollNumber}</div>
                     </div>
                 </div>
             );
         case 'marks_table':
             return (
                 <div className="w-full font-sans overflow-hidden flex flex-col">
-                     <div className="rounded-t-lg bg-[#1e1b4b] text-white p-2 text-center text-[10px] font-black uppercase tracking-widest shrink-0">Academic Performance</div>
+                     <div className="rounded-t-lg bg-[#1e1b4b] text-white p-1.5 text-center text-[10px] font-black uppercase tracking-widest shrink-0">Academic Performance</div>
                      <div className="border-x border-b border-slate-400 shadow-sm overflow-hidden bg-white/70">
                         <table className="w-full text-center border-collapse table-fixed">
                              <thead>
@@ -232,12 +232,12 @@ const BlockRenderer: React.FC<{
                                     return (
                                     <React.Fragment key={sub.id}>
                                         <tr className="border-b border-slate-300">
-                                            <td rowSpan={2} className="border-r border-slate-400 font-black text-left px-3 py-1.5 align-middle text-[#1e1b4b] bg-white/50 uppercase">{sub.name}</td>
-                                            <td className="border-r border-slate-400 text-[8px] text-slate-400 font-black uppercase tracking-widest text-center py-1.5 bg-[#f8fafc]/80">SUB</td>
+                                            <td rowSpan={2} className="border-r border-slate-400 font-black text-left px-3 py-1 align-middle text-[#1e1b4b] bg-white/50 uppercase">{sub.name}</td>
+                                            <td className="border-r border-slate-400 text-[8px] text-slate-400 font-black uppercase tracking-widest text-center py-1 bg-[#f8fafc]/80">SUB</td>
                                             {exams.map(exam => (
                                                 <React.Fragment key={exam.id}>
-                                                    <td className="border-r border-slate-200 text-slate-300 py-1.5 text-xs">{helpers.getMaxMark(marks, exam.id, sub.id, 'Subjective')}</td>
-                                                    <td className="border-r border-slate-400 font-bold py-1.5 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Subjective')}</td>
+                                                    <td className="border-r border-slate-200 text-slate-300 py-1 text-xs">{helpers.getMaxMark(marks, exam.id, sub.id, 'Subjective')}</td>
+                                                    <td className="border-r border-slate-400 font-bold py-1 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Subjective')}</td>
                                                 </React.Fragment>
                                             ))}
                                             <td rowSpan={2} className="border-r border-slate-400 font-bold text-slate-800 align-middle bg-[#f1f5f9]/40">{stats.obtained} / {stats.max}</td>
@@ -245,11 +245,11 @@ const BlockRenderer: React.FC<{
                                             <td rowSpan={2} className="font-black text-[#1e1b4b] align-middle bg-[#f1f5f9]/40">{stats.grade}</td>
                                         </tr>
                                         <tr className="border-b border-slate-400">
-                                            <td className="border-r border-slate-400 text-[8px] text-slate-400 font-black uppercase tracking-widest text-center py-1.5 bg-[#f8fafc]/80">OBJ</td>
+                                            <td className="border-r border-slate-400 text-[8px] text-slate-400 font-black uppercase tracking-widest text-center py-1 bg-[#f8fafc]/80">OBJ</td>
                                             {exams.map(exam => (
                                                 <React.Fragment key={exam.id}>
-                                                     <td className="border-r border-slate-200 text-slate-300 py-1.5 text-xs">{helpers.getMaxMark(marks, exam.id, sub.id, 'Objective')}</td>
-                                                     <td className="border-r border-slate-400 font-bold py-1.5 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Objective')}</td>
+                                                     <td className="border-r border-slate-200 text-slate-300 py-1 text-xs">{helpers.getMaxMark(marks, exam.id, sub.id, 'Objective')}</td>
+                                                     <td className="border-r border-slate-400 font-bold py-1 text-black">{helpers.getMark(marks, exam.id, sub.id, 'Objective')}</td>
                                                 </React.Fragment>
                                             ))}
                                         </tr>
@@ -292,7 +292,7 @@ const BlockRenderer: React.FC<{
             return (
                 <div className={clsx("w-full h-full bg-white/80 overflow-hidden", block.style.border && "border border-slate-300 rounded-lg p-3")}>
                      <h4 className="font-black text-[#1e1b4b] uppercase text-[9px] mb-2 border-b border-slate-200 pb-1 flex items-center gap-1">
-                        <MessageSquareQuote size={10} /> Teacher's Comments
+                        <MessageSquare size={10} /> Teacher's Comments
                      </h4>
                      <div className="text-slate-600 space-y-1" style={{ fontSize: `${block.style.fontSize}px` }}>
                         {subjects.map(s => {
@@ -363,7 +363,7 @@ const CustomizableScoreCard: React.FC<{
             >
                  {schoolInfo.watermark && (
                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03] grayscale">
-                         <img src={schoolInfo.watermark} className="w-[80%] max-h-[80%] object-contain" />
+                         <img src={schoolInfo.watermark} className="w-[80%] max-h-[80%] object-contain" alt="Watermark" />
                      </div>
                  )}
 
@@ -457,6 +457,14 @@ export const ScoreCard: React.FC = () => {
         setExams(e);
         setSubjects(s);
         setSchoolInfo(info);
+        
+        // Load custom layout if it exists in school info
+        // @ts-ignore - Assuming schema may have been extended or handled via JSON in config
+        if (info.scorecard_layout) {
+            // @ts-ignore
+            setLayout(info.scorecard_layout);
+        }
+
         if(c.length > 0) setSelectedClassId(c[0].id);
       } catch(e) {
         showToast("Failed to load metadata", 'error');
@@ -605,7 +613,7 @@ export const ScoreCard: React.FC = () => {
   };
 
   const getBase64ImageFromURL = (url: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const img = new Image();
       img.setAttribute("crossOrigin", "anonymous");
       img.onload = () => {
@@ -841,8 +849,13 @@ export const ScoreCard: React.FC = () => {
   const saveSchoolAssets = async () => {
       setIsSavingAssets(true);
       try {
-          await DataService.updateSchoolInfo(schoolInfo);
-          showToast("School branding saved successfully", 'success');
+          // Merge current layout into school info for database storage
+          await DataService.updateSchoolInfo({
+              ...schoolInfo,
+              // @ts-ignore - Persisting layout JSON
+              scorecard_layout: layout 
+          });
+          showToast("Branding and Layout saved successfully", 'success');
       } catch (e) { showToast("Failed to save branding.", 'error'); } finally { setIsSavingAssets(false); }
   };
 
@@ -1041,7 +1054,7 @@ export const ScoreCard: React.FC = () => {
                                 <div className="pt-2">
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Primary Logo</label>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">{schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" /> : <ImageIcon size={24} className="text-slate-300" />}</div>
+                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">{schoolInfo.logo ? <img src={schoolInfo.logo} className="w-full h-full object-contain" alt="Preview Logo" /> : <ImageIcon size={24} className="text-slate-300" />}</div>
                                         <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-900">
                                             <Upload size={14} /> Upload Logo <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'logo')} />
                                         </label>
@@ -1050,14 +1063,14 @@ export const ScoreCard: React.FC = () => {
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Watermark</label>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">{schoolInfo.watermark ? <img src={schoolInfo.watermark} className="w-full h-full object-contain opacity-30" /> : <Droplet size={24} className="text-slate-300" />}</div>
+                                        <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0">{schoolInfo.watermark ? <img src={schoolInfo.watermark} className="w-full h-full object-contain opacity-30" alt="Preview Watermark" /> : <Droplet size={24} className="text-slate-300" />}</div>
                                         <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-50">
                                             <Upload size={14} /> Upload <input type="file" accept="image/*" className="hidden" onChange={(e) => handleGlobalAssetUpload(e, 'watermark')} />
                                         </label>
                                     </div>
                                 </div>
                                 <button onClick={saveSchoolAssets} disabled={isSavingAssets} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 mt-4 shadow-sm">
-                                    {isSavingAssets ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Assets
+                                    {isSavingAssets ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Design & Branding
                                 </button>
                             </div>
                         )}
