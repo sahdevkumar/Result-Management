@@ -93,7 +93,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-[#E0E5EC] dark:bg-[#2A2A2A] shadow-[inset_6px_6px_12px_#b8b9be,inset_-6px_-6px_12px_#ffffff] dark:shadow-[inset_5px_5px_10px_#1a1a1a,inset_-5px_-5px_10px_#3a3a3a] border-none text-slate-700 dark:text-white',
                     button: 'bg-[#E0E5EC] dark:bg-[#2A2A2A] shadow-[6px_6px_12px_#b8b9be,-6px_-6px_12px_#ffffff] dark:shadow-[5px_5px_10px_#1a1a1a,-5px_-5px_10px_#3a3a3a] text-indigo-600 dark:text-indigo-400 hover:scale-[0.98] transition-transform',
                     text: 'text-slate-600 dark:text-slate-300',
-                    accent: 'text-indigo-500'
+                    accent: 'text-indigo-500',
+                    badge: 'bg-[#E0E5EC] dark:bg-[#2A2A2A] text-slate-500 dark:text-slate-400 shadow-[2px_2px_5px_#b8b9be,-2px_-2px_5px_#ffffff] dark:shadow-[2px_2px_5px_#1a1a1a,-2px_-2px_5px_#3a3a3a]'
                 };
                 case 'neo': return {
                     bg: 'bg-black',
@@ -101,7 +102,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-black border border-green-800 text-green-400 focus:border-green-500 focus:shadow-[0_0_10px_rgba(34,197,94,0.5)] rounded-none',
                     button: 'bg-green-900/30 border border-green-500 text-green-400 hover:bg-green-500 hover:text-black rounded-none',
                     text: 'text-green-600',
-                    accent: 'text-green-400'
+                    accent: 'text-green-400',
+                    badge: 'bg-black border border-green-500 text-green-500'
                 };
                 case 'brutalism': return {
                     bg: 'bg-[#FFDE59] dark:bg-[#4338ca]',
@@ -109,7 +111,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-white border-2 border-black text-black font-bold focus:shadow-[4px_4px_0px_0px_#000000] rounded-none',
                     button: 'bg-black text-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none rounded-none font-black uppercase',
                     text: 'text-black',
-                    accent: 'text-black'
+                    accent: 'text-black',
+                    badge: 'bg-black text-white border border-black'
                 };
                 case 'glassmorphism': return {
                     bg: 'bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 dark:from-slate-900 dark:via-purple-900/20 dark:to-slate-900',
@@ -117,7 +120,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-white/40 dark:bg-black/20 border border-white/30 text-slate-800 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400',
                     button: 'bg-indigo-600/80 hover:bg-indigo-600 text-white backdrop-blur-sm shadow-lg',
                     text: 'text-slate-600 dark:text-slate-300',
-                    accent: 'text-indigo-600 dark:text-indigo-400'
+                    accent: 'text-indigo-600 dark:text-indigo-400',
+                    badge: 'bg-white/50 dark:bg-black/50 backdrop-blur-md text-indigo-900 dark:text-white border border-white/40'
                 };
                 case 'minimalist': return {
                     bg: 'bg-white dark:bg-black',
@@ -125,7 +129,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-slate-400 rounded-none',
                     button: 'bg-black dark:bg-white text-white dark:text-black rounded-none hover:opacity-80',
                     text: 'text-slate-500 dark:text-slate-400',
-                    accent: 'text-black dark:text-white'
+                    accent: 'text-black dark:text-white',
+                    badge: 'bg-black dark:bg-white text-white dark:text-black'
                 };
                 case 'quantum': return {
                     bg: 'bg-[#020617]',
@@ -133,7 +138,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-[#050505] border border-cyan-900/50 text-cyan-300 focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)]',
                     button: 'bg-cyan-950/50 border border-cyan-500 text-cyan-300 hover:bg-cyan-500 hover:text-black hover:shadow-[0_0_20px_rgba(6,182,212,0.5)]',
                     text: 'text-cyan-700',
-                    accent: 'text-cyan-400'
+                    accent: 'text-cyan-400',
+                    badge: 'bg-cyan-950 text-cyan-400 border border-cyan-500'
                 };
                 case 'professional': return {
                     bg: 'bg-slate-50 dark:bg-slate-900',
@@ -141,7 +147,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-600 focus:border-transparent',
                     button: 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none',
                     text: 'text-slate-600 dark:text-slate-400',
-                    accent: 'text-blue-600'
+                    accent: 'text-blue-600',
+                    badge: 'bg-blue-600 text-white shadow-md'
                 };
                 case '3d': return {
                     bg: 'bg-[#d1d5db] dark:bg-[#1f2937]',
@@ -149,7 +156,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 focus:shadow-[4px_4px_0px_rgba(0,0,0,0.1)] transition-all',
                     button: 'bg-indigo-600 text-white border-2 border-indigo-800 shadow-[0_4px_0_rgb(55,48,163)] active:shadow-none active:translate-y-[4px] transition-all',
                     text: 'text-slate-700 dark:text-slate-300',
-                    accent: 'text-indigo-700 dark:text-indigo-400'
+                    accent: 'text-indigo-700 dark:text-indigo-400',
+                    badge: 'bg-indigo-600 text-white border-2 border-indigo-800'
                 };
                 case 'animated': return {
                     bg: 'bg-slate-900',
@@ -157,7 +165,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-slate-900/50 border border-indigo-500/30 text-indigo-100 focus:bg-slate-900 focus:border-indigo-400 focus:shadow-[0_0_15px_rgba(99,102,241,0.3)]',
                     button: 'bg-indigo-600 hover:bg-indigo-500 text-white animate-pulse hover:animate-none shadow-[0_0_20px_indigo]',
                     text: 'text-indigo-200',
-                    accent: 'text-indigo-400'
+                    accent: 'text-indigo-400',
+                    badge: 'bg-indigo-600 text-white shadow-[0_0_15px_indigo]'
                 };
                 case 'gradients': return {
                     bg: 'bg-gradient-to-tr from-violet-600 via-indigo-500 to-purple-500',
@@ -165,7 +174,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-slate-50 dark:bg-slate-800 border-none ring-2 ring-transparent focus:ring-violet-500',
                     button: 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg',
                     text: 'text-slate-500 dark:text-slate-400',
-                    accent: 'text-violet-600'
+                    accent: 'text-violet-600',
+                    badge: 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
                 };
                 case 'micro': return {
                     bg: 'bg-slate-50 dark:bg-slate-950',
@@ -173,7 +183,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-mono focus:border-black dark:focus:border-white rounded-md',
                     button: 'bg-black dark:bg-white text-white dark:text-black text-xs uppercase tracking-widest hover:opacity-80 rounded-md border border-transparent',
                     text: 'text-slate-500 text-xs',
-                    accent: 'text-black dark:text-white'
+                    accent: 'text-black dark:text-white',
+                    badge: 'bg-black dark:bg-white text-white dark:text-black tracking-widest'
                 };
                 case 'asymmetric': return {
                     bg: 'bg-stone-100 dark:bg-stone-900',
@@ -181,7 +192,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-stone-50 dark:bg-stone-900/50 border-b-2 border-stone-300 dark:border-stone-600 focus:border-stone-600 dark:focus:border-stone-400 rounded-t-lg',
                     button: 'bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 rounded-tl-xl rounded-br-xl hover:rounded-xl transition-all duration-300',
                     text: 'text-stone-500 dark:text-stone-400',
-                    accent: 'text-stone-700 dark:text-stone-300'
+                    accent: 'text-stone-700 dark:text-stone-300',
+                    badge: 'bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900'
                 };
                 case 'vivid': return {
                     bg: 'bg-fuchsia-900',
@@ -189,7 +201,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-fuchsia-900 border border-fuchsia-400 text-fuchsia-100 placeholder:text-fuchsia-400/70 focus:bg-fuchsia-800',
                     button: 'bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black uppercase tracking-wider shadow-[4px_4px_0px_white]',
                     text: 'text-fuchsia-200',
-                    accent: 'text-fuchsia-300'
+                    accent: 'text-fuchsia-300',
+                    badge: 'bg-fuchsia-500 text-white border-2 border-fuchsia-300'
                 };
                 case 'lumen': return {
                     bg: 'bg-[#F0F2F5] dark:bg-[#18191A]',
@@ -197,7 +210,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-slate-50 dark:bg-[#3A3B3C] border border-slate-200 dark:border-[#3A3B3C] rounded-lg focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900',
                     button: 'bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold',
                     text: 'text-slate-500 dark:text-slate-400',
-                    accent: 'text-blue-500'
+                    accent: 'text-blue-500',
+                    badge: 'bg-blue-500 text-white'
                 };
                 case 'aura': return {
                     bg: 'bg-slate-950',
@@ -205,7 +219,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     input: 'bg-slate-950/50 border border-indigo-500/30 text-indigo-100 focus:border-indigo-400 focus:shadow-[0_0_15px_rgba(129,140,248,0.2)] rounded-xl',
                     button: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] transition-all',
                     text: 'text-slate-400',
-                    accent: 'text-indigo-400'
+                    accent: 'text-indigo-400',
+                    badge: 'bg-indigo-600 text-white'
                 };
             }
         }
@@ -217,7 +232,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             input: 'bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)] placeholder-[var(--text-secondary)] focus:border-[var(--color-primary)] ring-0 focus:ring-2 focus:ring-[var(--color-primary)]/20',
             button: 'bg-[var(--bg-button)] hover:brightness-90 text-[var(--text-button)] shadow-md',
             text: 'text-[var(--text-secondary)]',
-            accent: 'text-[var(--color-primary)]'
+            accent: 'text-[var(--color-primary)]',
+            badge: 'bg-[var(--color-primary)] text-white border-transparent'
         };
     };
 
@@ -241,11 +257,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
 
                 <div className={clsx("rounded-[32px] p-8 shadow-2xl relative transition-all", styles.card)}>
-                    <div className={clsx("absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg border", 
-                        theme === 'brutalism' ? "bg-black text-white border-black" : 
-                        theme === 'neo' ? "bg-black border-green-500 text-green-500" : 
-                        theme === 'vivid' ? "bg-fuchsia-500 text-white border-fuchsia-400" :
-                        "bg-[var(--color-primary)] text-white border-transparent"
+                    <div className={clsx("absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg", 
+                        styles.badge
                     )}>
                         {mode === 'login' ? 'Secure Authentication' : mode === 'signup' ? 'Member Registration' : 'Account Recovery'}
                     </div>
