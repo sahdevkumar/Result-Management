@@ -1,4 +1,5 @@
 
+// ... imports ...
 import React, { useState } from 'react';
 import { 
   ShieldCheck, Save, Users, 
@@ -183,13 +184,13 @@ export const RolePermission: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl shadow-indigo-100 flex gap-6 border-l-8 border-indigo-500">
+          <div className="bg-indigo-950 rounded-3xl p-8 text-white shadow-xl shadow-indigo-200 flex gap-6 border-l-8 border-indigo-900">
             <div className="p-4 bg-white/10 rounded-2xl h-fit backdrop-blur-md">
-                <ShieldAlert size={32} className="text-indigo-400" />
+                <ShieldAlert size={32} className="text-violet-200" />
             </div>
             <div>
                 <h4 className="font-black text-xl uppercase tracking-tight mb-2">Master Administrator Logic</h4>
-                <p className="text-sm text-slate-400 leading-relaxed">
+                <p className="text-sm text-violet-100 leading-relaxed">
                     The <b>Super Admin</b> profile is the root account for the EduCore instance. It possesses unchangeable permissions for database maintenance, audit log access, and global system configurations. It cannot be locked or modified by other roles.
                 </p>
             </div>

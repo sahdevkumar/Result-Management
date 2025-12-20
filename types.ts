@@ -147,3 +147,31 @@ export interface ActivityLog {
   timestamp: string;
   role: string;
 }
+
+// --- Theme Types ---
+
+export interface ThemeColors {
+  primary: string;       // Main brand color (accents, links)
+  secondary: string;     // Secondary accents
+  background: string;    // Main body background
+  surface: string;       // Card/Panel background
+  surfaceOpacity?: number; // Opacity of the surface (0-1)
+  textMain: string;      // Primary text color
+  textSecondary: string; // Subtitles/secondary text
+  border: string;        // Border colors
+  buttonBackground: string; // Primary button background
+  buttonText: string;    // Button text color
+  success: string;
+  danger: string;
+}
+
+export interface CustomTheme {
+  id: string;
+  name: string;
+  // Supports separate configurations for light and dark modes
+  colors: {
+    light: ThemeColors;
+    dark: ThemeColors;
+  };
+  isPreset?: boolean; // True if it's a built-in system theme
+}

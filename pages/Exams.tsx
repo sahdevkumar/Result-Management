@@ -1,8 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
 import { Exam, ExamStatus, ExamType } from '../types';
-import { Calendar, Plus, Book, Tag, Trash2, Pencil, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { Calendar, Plus, Book, Tag, Trash2, Pencil, X, AlertTriangle, Loader2, MoreVertical, Copy, Archive, Share2, Star } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
+import { ActionMenu } from '../components/ActionMenu';
 import clsx from 'clsx';
 
 export const Exams: React.FC = () => {
@@ -84,6 +86,21 @@ export const Exams: React.FC = () => {
     setShowModal(true);
   };
 
+  const handleDuplicate = async (exam: Exam) => {
+      try {
+          await DataService.addExam({
+              name: `${exam.name} (Copy)`,
+              type: exam.type,
+              date: exam.date,
+              status: ExamStatus.Upcoming
+          });
+          showToast("Exam duplicated successfully", 'success');
+          loadData();
+      } catch (e) {
+          showToast("Failed to duplicate exam", 'error');
+      }
+  };
+
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingId(null);
@@ -127,8 +144,8 @@ export const Exams: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Exam Management</h1>
-          <p className="text-slate-500 text-sm">Schedule and manage examinations</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Exam Management</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Schedule and manage examinations</p>
         </div>
         <button 
           onClick={() => {
@@ -141,7 +158,7 @@ export const Exams: React.FC = () => {
               }));
               setShowModal(true);
           }}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm"
         >
           <Plus size={18} />
           <span>Create New Exam</span>
@@ -150,36 +167,52 @@ export const Exams: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
-           <div className="col-span-full text-center py-12 text-slate-500">Loading exams...</div>
+           <div className="col-span-full text-center py-12 text-slate-500 dark:text-slate-400">Loading exams...</div>
         ) : exams.length === 0 ? (
-           <div className="col-span-full text-center py-12 text-slate-500 bg-white rounded-xl border border-slate-200">
+           <div className="col-span-full text-center py-12 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
               No exams found. Create one to get started.
            </div>
         ) : (
           exams.map((exam) => (
-            <div key={exam.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow relative">
+            <div key={exam.id} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 hover:shadow-md transition-shadow relative">
+              <div className="absolute top-4 right-4">
+                  <ActionMenu 
+                    label="Options"
+                    variant="dark"
+                    actions={[
+                        { label: 'Edit', onClick: () => handleEdit(exam), icon: Pencil, separatorAfter: true },
+                        { label: 'Duplicate', onClick: () => handleDuplicate(exam), icon: Copy },
+                        { label: 'Archive', onClick: () => showToast("Archived (Demo)", "info"), icon: Archive },
+                        { label: 'Add to favorites', onClick: () => showToast("Added to favorites", "success"), icon: Star, separatorAfter: true },
+                        { label: 'Delete', onClick: () => handleDeleteClick(exam), icon: Trash2, danger: true }
+                    ]}
+                  />
+              </div>
+
               <div className="flex justify-between items-start mb-4">
                 <div className={clsx(
-                  "p-3 rounded-lg",
-                  exam.status === ExamStatus.Completed ? "bg-green-100 text-green-600" :
-                  exam.status === ExamStatus.Ongoing ? "bg-blue-100 text-blue-600" :
-                  "bg-amber-100 text-amber-600"
+                  "p-3 rounded-xl",
+                  exam.status === ExamStatus.Completed ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" :
+                  exam.status === ExamStatus.Ongoing ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" :
+                  "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
                 )}>
                   <Book size={24} />
                 </div>
-                <span className={clsx(
-                  "px-3 py-1 rounded-full text-xs font-bold",
-                  exam.status === ExamStatus.Completed ? "bg-green-50 text-green-700 border border-green-200" :
-                  exam.status === ExamStatus.Ongoing ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                  "bg-amber-50 text-amber-700 border border-amber-200"
-                )}>
-                  {exam.status}
-                </span>
               </div>
               
-              <h3 className="font-bold text-lg text-slate-800 mb-2">{exam.name}</h3>
+              <div className="mb-4">
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-1 pr-12">{exam.name}</h3>
+                  <span className={clsx(
+                    "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                    exam.status === ExamStatus.Completed ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800" :
+                    exam.status === ExamStatus.Ongoing ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800" :
+                    "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                  )}>
+                    {exam.status}
+                  </span>
+              </div>
               
-              <div className="space-y-2 text-sm text-slate-500">
+              <div className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-2">
                    <Tag size={16} />
                    <span>Type: {exam.type}</span>
@@ -189,23 +222,6 @@ export const Exams: React.FC = () => {
                    <span>Date: {exam.date || 'N/A'}</span>
                 </div>
               </div>
-
-              <div className="mt-6 pt-4 border-t border-slate-100 flex gap-2">
-                 <button 
-                    onClick={() => handleEdit(exam)}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg text-sm font-medium transition-colors"
-                 >
-                    <Pencil size={16} />
-                    Edit
-                 </button>
-                 <button 
-                    onClick={() => handleDeleteClick(exam)}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors"
-                 >
-                    <Trash2 size={16} />
-                    Delete
-                 </button>
-              </div>
             </div>
           ))
         )}
@@ -214,35 +230,35 @@ export const Exams: React.FC = () => {
       {/* Create/Edit Exam Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white">
                   {editingId ? 'Edit Exam' : 'Create New Exam'}
               </h3>
-              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600">
+              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                 <X size={24} />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Exam Name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Exam Name</label>
                 <input 
                   type="text" 
                   name="name"
                   required
                   placeholder="e.g., Physics Unit Test 1"
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
                   value={formData.name}
                   onChange={handleInputChange}
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Exam Type</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Exam Type</label>
                 <select 
                     name="type"
                     required
-                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
+                    className="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                     value={formData.type}
                     onChange={handleInputChange}
                 >
@@ -255,27 +271,27 @@ export const Exams: React.FC = () => {
                     )}
                 </select>
                 {examTypes.length === 0 && (
-                     <p className="text-xs text-amber-600 mt-1">Please add exam types in Settings first.</p>
+                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Please add exam types in Settings first.</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
                 <input 
                   type="date" 
                   name="date"
                   required
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
+                  className="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   value={formData.date}
                   onChange={handleInputChange}
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
                 <select 
                    name="status"
-                   className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
+                   className="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                    value={formData.status}
                    onChange={handleInputChange}
                 >
@@ -285,7 +301,7 @@ export const Exams: React.FC = () => {
                 </select>
               </div>
               <div className="pt-4">
-                <button type="submit" disabled={examTypes.length === 0} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed">
+                <button type="submit" disabled={examTypes.length === 0} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed">
                   {editingId ? 'Update Exam' : 'Create Exam'}
                 </button>
               </div>
@@ -297,27 +313,27 @@ export const Exams: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && examToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
               <div className="p-6 text-center">
-                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertTriangle className="text-red-600" size={24} />
+                 <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />
                  </div>
-                 <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Exam?</h3>
-                 <p className="text-slate-500 text-sm mb-6">
+                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Delete Exam?</h3>
+                 <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
                     Are you sure you want to delete <strong>{examToDelete.name}</strong>? This will permanently delete the exam and all associated marks records.
                  </p>
                  <div className="flex gap-3">
                     <button 
                        onClick={() => setShowDeleteModal(false)}
                        disabled={isDeleting}
-                       className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                       className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                     >
                        Cancel
                     </button>
                     <button 
                        onClick={confirmDelete}
                        disabled={isDeleting}
-                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                        {isDeleting && <Loader2 size={16} className="animate-spin" />}
                        {isDeleting ? 'Deleting...' : 'Delete'}

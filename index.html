@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -5,63 +6,313 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Unacademy - Exam Result Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                850: '#151e2e',
+                950: '#020617',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
       body {
         font-family: 'Inter', sans-serif;
+        transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
       }
       
-      @media print {
-        @page {
-            margin: 0;
-            size: auto; 
-        }
-        
-        /* Hide elements marked as no-print */
-        .no-print, .no-print * { 
-            display: none !important; 
-        }
+      /* --- GLOBAL DROPDOWN & INPUT THEME ENGINE --- */
+      
+      /* Base Input/Select Styles */
+      select, input, textarea {
+        transition: all 0.2s ease-in-out;
+      }
 
-        /* Essential resets for full page printing */
+      /* --------------------------- */
+      /* --- DYNAMIC CUSTOM THEME --- */
+      /* --------------------------- */
+      
+      html.custom-theme body {
+        background-color: var(--bg-background) !important;
+        color: var(--text-main) !important;
+      }
+
+      /* Overriding standard Tailwind utility classes when .custom-theme is active */
+      
+      /* Backgrounds */
+      html.custom-theme .bg-white, 
+      html.custom-theme .dark\:bg-slate-900, 
+      html.custom-theme .bg-slate-50,
+      html.custom-theme .dark\:bg-slate-800 {
+        background-color: var(--bg-surface) !important;
+        color: var(--text-main) !important;
+        border-color: var(--border-color) !important;
+        backdrop-filter: blur(var(--surface-blur, 0px)) !important;
+        -webkit-backdrop-filter: blur(var(--surface-blur, 0px)) !important;
+      }
+
+      html.custom-theme .bg-slate-200\/50,
+      html.custom-theme .dark\:bg-slate-900\/50 {
+         background-color: var(--bg-background) !important;
+      }
+
+      /* Primary Buttons / Accents */
+      html.custom-theme .bg-indigo-600,
+      html.custom-theme .bg-indigo-500,
+      html.custom-theme .bg-indigo-950,
+      html.custom-theme .bg-slate-800 { /* Mapping slate buttons too */
+        background-color: var(--bg-button) !important;
+        color: var(--text-button) !important;
+        border: none !important;
+      }
+
+      html.custom-theme .hover\:bg-indigo-700:hover,
+      html.custom-theme .hover\:bg-indigo-900:hover,
+      html.custom-theme .hover\:bg-black:hover {
+        background-color: var(--bg-button) !important;
+        filter: brightness(0.9);
+      }
+
+      /* Text Accents (Keep to Primary Brand Color) */
+      html.custom-theme .text-indigo-600,
+      html.custom-theme .dark\:text-indigo-400,
+      html.custom-theme .text-indigo-500 {
+        color: var(--color-primary) !important;
+      }
+
+      html.custom-theme .border-indigo-500 {
+        border-color: var(--color-primary) !important;
+      }
+
+      /* Secondary / Muted Elements */
+      html.custom-theme .text-slate-500,
+      html.custom-theme .dark\:text-slate-400,
+      html.custom-theme .text-slate-600 {
+        color: var(--text-secondary) !important;
+      }
+
+      html.custom-theme .border-slate-200,
+      html.custom-theme .dark\:border-slate-700,
+      html.custom-theme .border-slate-300 {
+        border-color: var(--border-color) !important;
+      }
+
+      /* Form Inputs */
+      html.custom-theme input, 
+      html.custom-theme select, 
+      html.custom-theme textarea {
+        background-color: var(--bg-surface) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-main) !important;
+      }
+      
+      html.custom-theme input:focus,
+      html.custom-theme select:focus,
+      html.custom-theme textarea:focus {
+        border-color: var(--color-primary) !important;
+        box-shadow: 0 0 0 2px var(--color-primary) !important;
+      }
+
+      /* Sidebar Specifics */
+      html.custom-theme .w-72.fixed {
+         background-color: var(--bg-surface) !important;
+         border-right: 1px solid var(--border-color) !important;
+         backdrop-filter: blur(var(--surface-blur, 0px)) !important;
+      }
+      
+      /* Active Navigation Item */
+      html.custom-theme .group.bg-indigo-950,
+      html.custom-theme .group.text-white {
+         background-color: var(--color-primary) !important;
+         color: white !important;
+      }
+
+
+      /* --------------------------- */
+      /* --- PRESET THEMES --- */
+      /* --------------------------- */
+
+      /* 1. NEO THEME (Cyberpunk/Matrix) */
+      html.neo body {
+        background-color: #000000;
+        color: #22c55e;
+        font-family: 'Courier New', Courier, monospace;
+      }
+      html.neo .bg-white, html.neo .dark\:bg-slate-900, html.neo .dark\:bg-slate-800 {
+        background-color: #0a0a0a !important;
+        border: 1px solid #15803d !important;
+        color: #22c55e !important;
+        box-shadow: 0 0 5px rgba(34, 197, 94, 0.2);
+      }
+      html.neo input, html.neo select, html.neo textarea {
+        background-color: #051a0d !important;
+        border-color: #15803d !important;
+        color: #4ade80 !important;
+        border-radius: 0 !important;
+      }
+      html.neo input:focus, html.neo select:focus, html.neo textarea:focus {
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.5) !important;
+        border-color: #22c55e !important;
+      }
+      html.neo button {
+        border-radius: 0 !important;
+        letter-spacing: 1px;
+      }
+      html.neo .text-slate-500, html.neo .text-slate-400 {
+        color: #166534 !important;
+      }
+
+      /* 2. QUANTUM THEME (Sci-Fi/Futuristic) */
+      html.quantum body {
+        background-color: #020617;
+        color: #22d3ee;
+      }
+      html.quantum .bg-white, html.quantum .dark\:bg-slate-900, html.quantum .dark\:bg-slate-800 {
+        background-color: rgba(8, 51, 68, 0.3) !important;
+        border: 1px solid #0e7490 !important;
+        color: #67e8f9 !important;
+        backdrop-filter: blur(5px);
+      }
+      html.quantum input, html.quantum select, html.quantum textarea {
+        background-color: rgba(6, 182, 212, 0.05) !important;
+        border-color: #0891b2 !important;
+        color: #a5f3fc !important;
+      }
+      html.quantum .text-slate-800, html.quantum .text-slate-900 {
+        color: #cffafe !important;
+      }
+
+      /* 3. BRUTALISM THEME (Bold/Stark) */
+      html.brutalism body {
+        background-color: #fffdf5;
+      }
+      html.brutalism * {
+        border-radius: 0 !important;
+      }
+      html.brutalism .bg-white, html.brutalism .dark\:bg-slate-900 {
+        background-color: #ffffff !important;
+        border: 3px solid #000000 !important;
+        box-shadow: 6px 6px 0px 0px #000000 !important;
+        color: #000000 !important;
+      }
+      html.brutalism input, html.brutalism select, html.brutalism textarea {
+        background-color: #ffffff !important;
+        border: 3px solid #000000 !important;
+        color: #000000 !important;
+        font-weight: bold;
+        box-shadow: 4px 4px 0px 0px #000000 !important;
+      }
+      html.brutalism button {
+        border: 3px solid #000000 !important;
+        box-shadow: 4px 4px 0px 0px #000000 !important;
+        font-weight: 900 !important;
+        text-transform: uppercase;
+      }
+      html.brutalism button:active {
+        box-shadow: none !important;
+        transform: translate(4px, 4px) !important;
+      }
+
+      /* 4. GLASSMORPHISM (Frosted Glass) */
+      html.glassmorphism .bg-white, html.glassmorphism .dark\:bg-slate-900, html.glassmorphism .dark\:bg-slate-800 {
+        background: rgba(255, 255, 255, 0.25) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+      }
+      html.glassmorphism.dark .bg-white, html.glassmorphism.dark .dark\:bg-slate-900, html.glassmorphism.dark .dark\:bg-slate-800 {
+        background: rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+      html.glassmorphism input, html.glassmorphism select, html.glassmorphism textarea {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+      }
+
+      /* 5. NEUMORPHISM (Soft UI) */
+      html.neumorphism body {
+        background-color: #E0E5EC;
+      }
+      html.neumorphism.dark body {
+        background-color: #2A2A2A;
+      }
+      html.neumorphism .bg-white, html.neumorphism .dark\:bg-slate-900 {
+        background: #E0E5EC !important;
+        box-shadow: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5) !important;
+        border-radius: 20px !important;
+        border: none !important;
+      }
+      html.neumorphism.dark .bg-white, html.neumorphism.dark .dark\:bg-slate-900 {
+        background: #2A2A2A !important;
+        box-shadow: 5px 5px 10px #1a1a1a, -5px -5px 10px #3a3a3a !important;
+        color: #e0e0e0 !important;
+      }
+      html.neumorphism input, html.neumorphism select {
+        background: #E0E5EC !important;
+        box-shadow: inset 6px 6px 12px #b8b9be, inset -6px -6px 12px #ffffff !important;
+        border: none !important;
+      }
+      html.neumorphism.dark input, html.neumorphism.dark select {
+        background: #2A2A2A !important;
+        box-shadow: inset 5px 5px 10px #1a1a1a, inset -5px -5px 10px #3a3a3a !important;
+        color: white !important;
+      }
+
+      /* --- Common Option Styles --- */
+      select option {
+        background-color: #ffffff;
+        color: #1e293b;
+        padding: 10px;
+      }
+      html.dark select option {
+        background-color: #0f172a;
+        color: #f1f5f9;
+      }
+      html.neo select option {
+        background-color: #000000 !important;
+        color: #22c55e !important;
+      }
+      html.quantum select option {
+        background-color: #020617 !important;
+        color: #22d3ee !important;
+      }
+      html.brutalism select option {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        font-weight: 900 !important;
+      }
+
+      /* --- PRINT STYLES --- */
+      @media print {
+        @page { margin: 0; size: auto; }
+        .no-print, .no-print * { display: none !important; }
         html, body, #root, main, .print-reset {
             background-color: white !important;
             height: auto !important;
-            min-height: 0 !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: visible !important;
             display: block !important;
             position: static !important;
+            color: black !important;
+            box-shadow: none !important;
+            border: none !important;
         }
-
-        /* Specific fix for the main content area margin set in App.tsx */
-        main {
-            margin-left: 0 !important;
-            padding: 0 !important;
-        }
-
-        /* Ensure high-quality printing of graphics and colors */
         * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             box-shadow: none !important; 
+            text-shadow: none !important;
         }
-        
-        /* Force container visibility */
-        .print-force-visible {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-
-        /* Hide scrollbars */
-        ::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* Prevent background colors from being stripped */
-        .print-bg-indigo { background-color: #1e1b4b !important; color: white !important; }
       }
     </style>
 <script type="importmap">

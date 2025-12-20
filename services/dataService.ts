@@ -1,6 +1,6 @@
 
 import { supabase } from "../lib/supabase";
-import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType, SavedTemplate, TeacherRemark, NonAcademicRecord, UserProfile, ActivityLog } from "../types";
+import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType, SavedTemplate, TeacherRemark, NonAcademicRecord, UserProfile, ActivityLog, CustomTheme } from "../types";
 
 // --- Helpers for Data Mapping ---
 
@@ -113,7 +113,6 @@ export const DataService = {
           
         if (pError) {
           console.error("Profile Fetch Error:", pError);
-          // If profile is missing but auth passed, create a fallback profile or throw specific error
           throw new Error("Login successful, but user profile could not be loaded. Please contact admin.");
         }
         
@@ -155,7 +154,7 @@ export const DataService = {
         email: user.email,
         mobile: user.mobile || '',
         role: user.role,
-        password: user.password, // Note: Storing password in plain text is not recommended for production, used here for demo role management
+        password: user.password, 
         assigned_subject_id: user.subjectId || null,
         staff_post: user.staffPost || null,
         status: 'Active'
@@ -170,8 +169,16 @@ export const DataService = {
     if (error) throw error;
   },
 
+  resetPassword: async (email: string) => {
+    // 1. Demo Fallback
+    if (email === 'admin@unacademy.com') return;
+
+    // 2. Real Supabase Auth
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw new Error(error.message);
+  },
+
   getCurrentUser: async (): Promise<UserProfile | null> => {
-    // Check demo session first
     const demoSession = localStorage.getItem('unacademy_demo_user');
     if (demoSession) return JSON.parse(demoSession);
 
@@ -198,6 +205,71 @@ export const DataService = {
     } catch (e) {
         return null;
     }
+  },
+
+  // --- Theme Settings ---
+  
+  getThemePreference: async (userId: string) => {
+    if (userId === 'demo-admin-id') return null; // Demo user doesn't use DB for this
+    const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
+    if (data) {
+        return { theme: data.theme, darkMode: data.dark_mode };
+    }
+    return null;
+  },
+
+  saveThemePreference: async (userId: string, theme: string, darkMode: boolean) => {
+    if (userId === 'demo-admin-id') return;
+    const { error } = await supabase.from('user_settings').upsert({
+        user_id: userId,
+        theme: theme,
+        dark_mode: darkMode,
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    
+    if (error) console.error("Failed to save theme settings:", error);
+  },
+
+  // --- Custom Themes Management ---
+
+  getCustomThemes: async (): Promise<CustomTheme[]> => {
+    const { data, error } = await supabase.from('custom_themes').select('*');
+    if (error) {
+      console.error("Failed to load custom themes", error);
+      return [];
+    }
+    return data.map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      colors: t.colors,
+      isPreset: false
+    }));
+  },
+
+  saveCustomTheme: async (theme: Omit<CustomTheme, 'id'> & { id?: string }) => {
+    const user = await DataService.getCurrentUser();
+    if (!user) throw new Error("Must be logged in to save theme");
+
+    const payload = {
+        name: theme.name,
+        colors: theme.colors,
+        created_by: user.id
+    };
+
+    if (theme.id) {
+        // Update existing
+        const { error } = await supabase.from('custom_themes').update(payload).eq('id', theme.id);
+        if (error) throw new Error(error.message);
+    } else {
+        // Create new
+        const { error } = await supabase.from('custom_themes').insert(payload);
+        if (error) throw new Error(error.message);
+    }
+  },
+
+  deleteCustomTheme: async (id: string) => {
+    const { error } = await supabase.from('custom_themes').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
   // --- Connection & Core ---
@@ -544,10 +616,6 @@ export const DataService = {
   },
 
   getUserActivityLogs: async (): Promise<ActivityLog[]> => {
-    // In a production environment, this would fetch from a dedicated audit_logs table.
-    // Since we don't have triggers set up in this demo context, we will return a mixed list
-    // of simulated recent activities for demonstration purposes.
-    
     return [
       { id: '1', userId: 'admin', userName: 'Demo Administrator', role: 'Super Admin', action: 'System Login', details: 'Successful authentication', ipAddress: '192.168.1.10', timestamp: new Date().toISOString() },
       { id: '2', userId: 'u2', userName: 'Rahul Sharma', role: 'Teacher', action: 'Update Marks', details: 'Updated Physics marks for Class 10A', ipAddress: '192.168.1.45', timestamp: new Date(Date.now() - 3600000).toISOString() },

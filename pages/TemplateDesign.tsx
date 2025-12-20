@@ -2,11 +2,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Image as ImageIcon, Type, Save, Trash2, Layout, Maximize, Minus, Plus, 
-  List as ListIcon, Palette, Settings, Bold, Italic, Upload, Loader2
+  List as ListIcon, Palette, Settings, Bold, Italic, Upload, Loader2,
+  Copy, Edit, Share2
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DesignElement, SavedTemplate } from '../types';
 import { DataService } from '../services/dataService';
+import { ActionMenu } from '../components/ActionMenu';
 import clsx from 'clsx';
 
 type Tab = 'design' | 'list' | 'size';
@@ -75,6 +77,7 @@ export const TemplateDesign: React.FC = () => {
         const updated = await DataService.getTemplates();
         setSavedTemplates(updated);
         showToast("Layout saved to database", 'success');
+        setActiveTab('list');
     } catch (e) {
         showToast("Failed to save layout.", 'error');
     } finally {
@@ -100,6 +103,7 @@ export const TemplateDesign: React.FC = () => {
     setPageSize({ width: template.width, height: template.height, name: 'Custom' });
     setCustomSize({ width: template.width, height: template.height });
     showToast(`Loaded "${template.name}"`, 'success');
+    setActiveTab('design');
   };
 
   const addText = () => {
@@ -236,16 +240,16 @@ export const TemplateDesign: React.FC = () => {
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-6rem)] lg:h-[calc(100vh-2rem)]">
       
       {/* Sidebar Controls */}
-      <div className="lg:w-80 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden max-h-[40vh] lg:max-h-full">
+      <div className="lg:w-80 flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden max-h-[40vh] lg:max-h-full">
         
-        <div className="flex border-b border-slate-200">
-          <button onClick={() => setActiveTab('design')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'design' ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:bg-slate-50")}>
+        <div className="flex border-b border-slate-200 dark:border-slate-700">
+          <button onClick={() => setActiveTab('design')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'design' ? "bg-slate-50 dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700")}>
             <Palette size={14} /> Dsgn
           </button>
-          <button onClick={() => setActiveTab('list')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'list' ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:bg-slate-50")}>
+          <button onClick={() => setActiveTab('list')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'list' ? "bg-slate-50 dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700")}>
             <ListIcon size={14} /> List
           </button>
-          <button onClick={() => setActiveTab('size')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'size' ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:bg-slate-50")}>
+          <button onClick={() => setActiveTab('size')} className={clsx("flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1", activeTab === 'size' ? "bg-slate-50 dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700")}>
             <Settings size={14} /> Size
           </button>
         </div>
@@ -254,69 +258,79 @@ export const TemplateDesign: React.FC = () => {
           {activeTab === 'design' && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-2">
-                <button onClick={addText} className="flex items-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-700 text-xs font-medium">
+                <button onClick={addText} className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium">
                   <Type size={16} /> Add Text Block
                 </button>
-                <label className="flex items-center gap-2 px-3 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-700 text-xs font-medium cursor-pointer">
+                <label className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer">
                   <ImageIcon size={16} /> Add Image
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false)} />
                 </label>
               </div>
 
               {selectedElement ? (
-                <div className="border-t border-slate-100 pt-4 space-y-3">
+                <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
                    <div className="flex justify-between items-center">
-                       <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Properties</span>
-                       <button onClick={deleteElement} className="text-red-500 bg-red-50 p-1.5 rounded hover:bg-red-100"><Trash2 size={14} /></button>
+                       <span className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Properties</span>
+                       <button onClick={deleteElement} className="text-red-500 bg-red-50 dark:bg-red-900/20 p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30"><Trash2 size={14} /></button>
                    </div>
                    {selectedElement.type === 'text' && (
                       <div className="space-y-4">
                           <div>
-                              <label className="block text-xs font-medium text-slate-500 mb-1">Content</label>
-                              <textarea className="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 text-slate-900 bg-white" rows={3} value={selectedElement.content} onChange={(e) => updateElementContent(e.target.value)} />
+                              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Content</label>
+                              <textarea className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded text-xs focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white bg-white dark:bg-slate-900" rows={3} value={selectedElement.content} onChange={(e) => updateElementContent(e.target.value)} />
                           </div>
                           <div className="flex gap-2">
                               <div className="flex-1">
                                    <label className="block text-[10px] text-slate-400 mb-1">Font Size</label>
-                                   <input type="number" className="w-full p-1.5 border border-slate-300 rounded text-xs text-slate-900 bg-white" value={selectedElement.style.fontSize} onChange={(e) => updateElementStyle('fontSize', parseInt(e.target.value))} />
+                                   <input type="number" className="w-full p-1.5 border border-slate-300 dark:border-slate-600 rounded text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-900" value={selectedElement.style.fontSize} onChange={(e) => updateElementStyle('fontSize', parseInt(e.target.value))} />
                               </div>
                               <div className="w-10">
                                    <label className="block text-[10px] text-slate-400 mb-1">Color</label>
-                                   <input type="color" className="w-full h-[26px] border border-slate-300 rounded p-0.5 cursor-pointer" value={selectedElement.style.color} onChange={(e) => updateElementStyle('color', e.target.value)} />
+                                   <input type="color" className="w-full h-[26px] border border-slate-300 dark:border-slate-600 rounded p-0.5 cursor-pointer" value={selectedElement.style.color} onChange={(e) => updateElementStyle('color', e.target.value)} />
                               </div>
                           </div>
                           <div>
                               <label className="block text-[10px] text-slate-400 mb-1">Style</label>
-                              <div className="flex border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
-                                  <button onClick={() => updateElementStyle('fontWeight', selectedElement.style.fontWeight === 'bold' ? 'normal' : 'bold')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200", selectedElement.style.fontWeight === 'bold' && "bg-slate-300 text-slate-900")}><Bold size={14} /></button>
-                                  <button onClick={() => updateElementStyle('fontStyle', selectedElement.style.fontStyle === 'italic' ? 'normal' : 'italic')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200", selectedElement.style.fontStyle === 'italic' && "bg-slate-300 text-slate-900")}><Italic size={14} /></button>
+                              <div className="flex border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                                  <button onClick={() => updateElementStyle('fontWeight', selectedElement.style.fontWeight === 'bold' ? 'normal' : 'bold')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.fontWeight === 'bold' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><Bold size={14} className="dark:text-slate-300" /></button>
+                                  <button onClick={() => updateElementStyle('fontStyle', selectedElement.style.fontStyle === 'italic' ? 'normal' : 'italic')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.fontStyle === 'italic' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><Italic size={14} className="dark:text-slate-300" /></button>
                               </div>
                           </div>
                       </div>
                    )}
                 </div>
               ) : (
-                <div className="text-center py-6 text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">Select an element to edit</div>
+                <div className="text-center py-6 text-slate-400 text-xs border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">Select an element to edit</div>
               )}
             </div>
           )}
 
           {activeTab === 'list' && (
             <div className="space-y-4">
-              <button onClick={saveTemplate} disabled={isSavingTemplate} className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={saveTemplate} disabled={isSavingTemplate} className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50">
                 {isSavingTemplate ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Layout to DB
               </button>
               <div className="space-y-2 mt-4">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Saved Layouts</h3>
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saved Layouts</h3>
                 {savedTemplates.length === 0 ? <p className="text-sm text-slate-400 text-center py-4">No layouts in database.</p> : savedTemplates.map(t => (
-                  <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg group">
+                  <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-lg group">
                     <div className="overflow-hidden">
-                      <p className="font-medium text-sm text-slate-700 truncate">{t.name}</p>
+                      <p className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate">{t.name}</p>
                       <p className="text-[10px] text-slate-400">{t.width}x{t.height} • {t.createdAt}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => loadTemplate(t)} className="text-blue-500 hover:text-blue-700 p-1"><Layout size={16} /></button>
-                      <button onClick={() => deleteTemplate(t.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={16} /></button>
+                        <ActionMenu 
+                            label=""
+                            iconOnly
+                            icon={Settings}
+                            variant="ghost"
+                            actions={[
+                                { label: 'Edit', onClick: () => loadTemplate(t), icon: Edit, separatorAfter: true },
+                                { label: 'Duplicate', onClick: () => showToast("Duplicated (Demo)", "info"), icon: Copy },
+                                { label: 'Share', onClick: () => showToast("Shared (Demo)", "info"), icon: Share2, separatorAfter: true },
+                                { label: 'Delete', onClick: () => deleteTemplate(t.id), icon: Trash2, danger: true }
+                            ]}
+                        />
                     </div>
                   </div>
                 ))}
@@ -326,16 +340,16 @@ export const TemplateDesign: React.FC = () => {
 
           {activeTab === 'size' && (
             <div className="space-y-6">
-               <div><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Presets</h3>
+               <div><h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Presets</h3>
                   <div className="grid grid-cols-2 gap-2">
-                     <button onClick={() => applyPageSize(794, 1123, 'A4')} className={clsx("p-2 border rounded text-sm", pageSize.name === 'A4' ? "bg-blue-50 border-blue-500 text-blue-700" : "bg-white border-slate-200 text-slate-600")}>A4 (Portrait)</button>
-                     <button onClick={() => applyPageSize(1123, 794, 'A4-L')} className={clsx("p-2 border rounded text-sm", pageSize.name === 'A4-L' ? "bg-blue-50 border-blue-500 text-blue-700" : "bg-white border-slate-200 text-slate-600")}>A4 (Landscape)</button>
+                     <button onClick={() => applyPageSize(794, 1123, 'A4')} className={clsx("p-2 border rounded text-sm", pageSize.name === 'A4' ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 text-indigo-700 dark:text-indigo-400" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300")}>A4 (Portrait)</button>
+                     <button onClick={() => applyPageSize(1123, 794, 'A4-L')} className={clsx("p-2 border rounded text-sm", pageSize.name === 'A4-L' ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 text-indigo-700 dark:text-indigo-400" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300")}>A4 (Landscape)</button>
                   </div>
                </div>
-               <div><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Custom (px)</h3>
+               <div><h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Custom (px)</h3>
                   <div className="flex gap-2 mb-2">
-                     <input type="number" className="w-full p-2 border border-slate-300 rounded text-sm text-slate-900 bg-white" value={customSize.width} onChange={(e) => setCustomSize({...customSize, width: parseInt(e.target.value) || 0})} />
-                     <input type="number" className="w-full p-2 border border-slate-300 rounded text-sm text-slate-900 bg-white" value={customSize.height} onChange={(e) => setCustomSize({...customSize, height: parseInt(e.target.value) || 0})} />
+                     <input type="number" className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-900" value={customSize.width} onChange={(e) => setCustomSize({...customSize, width: parseInt(e.target.value) || 0})} />
+                     <input type="number" className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-900" value={customSize.height} onChange={(e) => setCustomSize({...customSize, height: parseInt(e.target.value) || 0})} />
                   </div>
                   <button onClick={() => applyPageSize(customSize.width, customSize.height, 'Custom')} className="w-full py-2 bg-slate-800 text-white rounded text-sm font-medium">Apply</button>
                </div>
@@ -345,12 +359,12 @@ export const TemplateDesign: React.FC = () => {
       </div>
 
       {/* Canvas Area */}
-      <div ref={containerRef} className="flex-1 bg-slate-200/50 rounded-xl overflow-auto flex items-start justify-center p-4 lg:p-8 relative border border-slate-300/50">
-          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 backdrop-blur shadow-sm p-1.5 rounded-lg border border-slate-200">
-             <button onClick={() => setScale(s => Math.max(0.2, s - 0.1))} className="p-1 hover:bg-slate-100 rounded"><Minus size={14} /></button>
-             <span className="text-xs font-mono w-12 text-center">{Math.round(scale * 100)}%</span>
-             <button onClick={() => setScale(s => Math.min(2.0, s + 0.1))} className="p-1 hover:bg-slate-100 rounded"><Plus size={14} /></button>
-             <button onClick={() => setScale(0.8)} className="p-1 hover:bg-slate-100 rounded ml-2"><Maximize size={14} /></button>
+      <div ref={containerRef} className="flex-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl overflow-auto flex items-start justify-center p-4 lg:p-8 relative border border-slate-300/50 dark:border-slate-700">
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow-sm p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+             <button onClick={() => setScale(s => Math.max(0.2, s - 0.1))} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded dark:text-white"><Minus size={14} /></button>
+             <span className="text-xs font-mono w-12 text-center dark:text-white">{Math.round(scale * 100)}%</span>
+             <button onClick={() => setScale(s => Math.min(2.0, s + 0.1))} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded dark:text-white"><Plus size={14} /></button>
+             <button onClick={() => setScale(0.8)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded ml-2 dark:text-white"><Maximize size={14} /></button>
           </div>
 
           <div 
@@ -365,13 +379,13 @@ export const TemplateDesign: React.FC = () => {
                     onMouseDown={(e) => initDrag(e, el.id)} onTouchStart={(e) => initDrag(e, el.id)}
                  >
                      {el.type === 'text' ? (
-                         <div style={{ fontSize: `${el.style.fontSize}px`, fontFamily: el.style.fontFamily, color: el.style.color, fontWeight: el.style.fontWeight, fontStyle: el.style.fontStyle, textDecoration: el.style.textDecoration, textAlign: el.style.textAlign as any, lineHeight: el.style.lineHeight, letterSpacing: `${el.style.letterSpacing}px`, whiteSpace: 'pre-wrap', wordBreak: 'break-word', width: '100%', height: '100%', userSelect: 'none', padding: '4px', border: selectedId === el.id ? '1px dashed #3b82f6' : '1px solid transparent' }}>
+                         <div style={{ fontSize: `${el.style.fontSize}px`, fontFamily: el.style.fontFamily, color: el.style.color, fontWeight: el.style.fontWeight, fontStyle: el.style.fontStyle, textDecoration: el.style.textDecoration, textAlign: el.style.textAlign as any, lineHeight: el.style.lineHeight, letterSpacing: `${el.style.letterSpacing}px`, whiteSpace: 'pre-wrap', wordBreak: 'break-word', width: '100%', height: '100%', userSelect: 'none', padding: '4px', border: selectedId === el.id ? '1px dashed #6366f1' : '1px solid transparent' }}>
                              {el.content}
                          </div>
                      ) : ( <img src={el.content} alt="element" className="w-full h-full object-contain pointer-events-none" /> )}
                      {selectedId === el.id && (
-                         <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none">
-                            <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize pointer-events-auto shadow-sm z-50" onMouseDown={(e) => initResize(e, el.id)} onTouchStart={(e) => initResize(e, el.id)}></div>
+                         <div className="absolute inset-0 border-2 border-indigo-500 pointer-events-none">
+                            <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-white border-2 border-indigo-500 rounded-full cursor-nwse-resize pointer-events-auto shadow-sm z-50" onMouseDown={(e) => initResize(e, el.id)} onTouchStart={(e) => initResize(e, el.id)}></div>
                          </div>
                      )}
                  </div>

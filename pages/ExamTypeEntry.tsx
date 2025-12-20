@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
 import { ExamType } from '../types';
@@ -117,7 +118,7 @@ export const ExamTypeEntry: React.FC = () => {
         </div>
         <button 
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm"
         >
           <Plus size={18} />
           <span>Add Exam Type</span>
@@ -128,14 +129,14 @@ export const ExamTypeEntry: React.FC = () => {
         {loading ? (
              <div className="col-span-full py-12 text-center text-slate-500">Loading exam types...</div>
         ) : examTypes.length === 0 ? (
-             <div className="col-span-full py-12 text-center text-slate-500 bg-white rounded-xl border border-slate-200 flex flex-col items-center gap-2">
+             <div className="col-span-full py-12 text-center text-slate-500 bg-white rounded-2xl border border-slate-200 flex flex-col items-center gap-2">
                 <AlertTriangle className="text-amber-500" size={32} />
                 <p>No exam types found or table missing.</p>
                 <p className="text-xs">Please run the SQL commands in <code>schema.sql</code> to initialize the database.</p>
              </div>
         ) : (
             examTypes.map(type => (
-                <div key={type.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:shadow-md transition-shadow group">
+                <div key={type.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center hover:shadow-md transition-shadow group">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
                             <Bookmark size={24} />
@@ -148,14 +149,14 @@ export const ExamTypeEntry: React.FC = () => {
                     <div className="flex gap-2">
                         <button 
                             onClick={() => handleEdit(type)} 
-                            className="text-slate-300 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="text-slate-300 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-xl transition-colors"
                             title="Edit"
                         >
                             <Pencil size={20} />
                         </button>
                         <button 
                             onClick={() => handleDeleteClick(type)} 
-                            className="text-slate-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            className="text-slate-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-xl transition-colors"
                             title="Delete"
                         >
                             <Trash2 size={20} />
@@ -169,7 +170,7 @@ export const ExamTypeEntry: React.FC = () => {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">{editingId ? 'Edit Exam Type' : 'Add Exam Type'}</h3>
               <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600">
@@ -183,7 +184,7 @@ export const ExamTypeEntry: React.FC = () => {
                   type="text" 
                   required
                   placeholder="e.g., Unit Test"
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-900"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                 />
@@ -193,13 +194,13 @@ export const ExamTypeEntry: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="e.g., Monthly assessment"
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-900"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                 />
               </div>
               <div className="pt-4">
-                <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors">
                   {editingId ? 'Update Exam Type' : 'Save Exam Type'}
                 </button>
               </div>
@@ -211,7 +212,7 @@ export const ExamTypeEntry: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && typeToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               <div className="p-6 text-center">
                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <AlertTriangle className="text-red-600" size={24} />
@@ -224,14 +225,14 @@ export const ExamTypeEntry: React.FC = () => {
                     <button 
                        onClick={() => setShowDeleteModal(false)}
                        disabled={isDeleting}
-                       className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                       className="flex-1 px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
                     >
                        Cancel
                     </button>
                     <button 
                        onClick={confirmDelete}
                        disabled={isDeleting}
-                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                       className="flex-1 bg-red-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                        {isDeleting && <Loader2 size={16} className="animate-spin" />}
                        {isDeleting ? 'Deleting...' : 'Delete'}
