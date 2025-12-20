@@ -86,23 +86,25 @@ export const DataService = {
   getSchoolInfo: async () => {
     const { data, error } = await supabase.from('school_config').select('*').eq('id', 1).single();
     if (error || !data) {
-      return { name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '' };
+      return { name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '', scorecard_layout: null };
     }
     return {
       name: data.name,
       tagline: data.tagline,
       logo: data.logo_url,
-      watermark: data.watermark_url
+      watermark: data.watermark_url,
+      scorecard_layout: data.scorecard_layout
     };
   },
 
-  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string }) => {
+  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, scorecard_layout?: any }) => {
     const dbRecord = {
       id: 1, 
       name: info.name,
       tagline: info.tagline,
       logo_url: info.logo,
       watermark_url: info.watermark,
+      scorecard_layout: info.scorecard_layout,
       updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('school_config').upsert(dbRecord, { onConflict: 'id' });
@@ -242,7 +244,6 @@ export const DataService = {
     return (data || []).map(mapSubjectRecord);
   },
 
-  // Fix: changed snake_case property access on 'sub' to camelCase to match the Subject interface definition
   addSubject: async (sub: Partial<Subject>): Promise<void> => {
     const { error } = await supabase.from('subjects').insert({ name: sub.name, code: sub.code, max_marks: sub.maxMarks, pass_marks: sub.passMarks, max_marks_objective: sub.maxMarksObjective, max_marks_subjective: sub.maxMarksSubjective });
     if (error) throw new Error(error.message || "Failed to add subject");
@@ -374,7 +375,6 @@ export const DataService = {
   },
 
   // --- Teacher Remarks ---
-  // Fix: changed snake_case property access on 'r' to camelCase to match the TeacherRemark interface definition
   saveTeacherRemark: async (r: TeacherRemark): Promise<void> => {
     const { error } = await supabase.from('teacher_remarks').upsert({
         student_id: r.studentId, exam_id: r.examId, subject_id: r.subjectId, remark: r.remark, updated_at: new Date().toISOString()

@@ -41,11 +41,11 @@ interface LayoutBlock {
 const DEFAULT_LAYOUT: LayoutBlock[] = [
     { id: 'logo', type: 'logo', label: 'School Logo', x: 347, y: 25, w: 100, h: 70, style: { fontSize: 0, color: '', border: false }, isVisible: true },
     { id: 'header_info', type: 'header_info', label: 'Session Info', x: 48, y: 105, w: 698, h: 30, style: { fontSize: 12, color: '#64748b', textAlign: 'center' }, isVisible: true },
-    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 150, w: 698, h: 95, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
-    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 270, w: 698, h: 440, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
-    { id: 'non_academic', type: 'non_academic', label: 'Non-Academic Skills', x: 48, y: 720, w: 698, h: 80, style: { fontSize: 10, color: '#1e293b', border: true }, isVisible: true },
-    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 815, w: 340, h: 140, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
-    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 815, w: 338, h: 140, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f8fafc', padding: 20 }, isVisible: true },
+    { id: 'student_info', type: 'student_info', label: 'Student Details', x: 48, y: 150, w: 698, h: 100, style: { fontSize: 14, color: '#000000', textAlign: 'left', border: true, padding: 10 }, isVisible: true },
+    { id: 'marks_table', type: 'marks_table', label: 'Marks Table', x: 48, y: 280, w: 698, h: 430, style: { fontSize: 11, color: '#000000', textAlign: 'center' }, isVisible: true },
+    { id: 'non_academic', type: 'non_academic', label: 'Non-Academic Skills', x: 48, y: 725, w: 698, h: 80, style: { fontSize: 10, color: '#1e293b', border: true }, isVisible: true },
+    { id: 'remarks', type: 'remarks', label: 'Remarks Section', x: 48, y: 820, w: 340, h: 140, style: { fontSize: 12, color: '#334155', border: true, padding: 12 }, isVisible: true },
+    { id: 'overall', type: 'custom_text', label: 'Overall Result', x: 408, y: 820, w: 338, h: 140, style: { fontSize: 14, color: '#1e1b4b', textAlign: 'center', border: true, backgroundColor: '#f8fafc', padding: 20 }, isVisible: true },
     { id: 'signatures', type: 'signatures', label: 'Signatures', x: 48, y: 980, w: 698, h: 80, style: { fontSize: 10, color: '#64748b', textAlign: 'center' }, isVisible: true },
 ];
 
