@@ -221,13 +221,22 @@ const App: React.FC = () => {
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   useEffect(() => {
-    // 1. Initial Session Check
+    // 1. Initial Session Check with Timeout
     const checkAuth = async () => {
         try {
-            const currentUser = await DataService.getCurrentUser();
-            setUser(currentUser);
+            // Force a timeout after 3 seconds to avoid stuck loading screens if Supabase hangs
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Check Timeout')), 3000));
+            
+            // Race the actual check against the timeout
+            const currentUser = await Promise.race([
+                DataService.getCurrentUser(),
+                timeoutPromise
+            ]);
+            
+            setUser(currentUser as UserProfile | null);
         } catch (e) {
-            console.error("Auth initialization failed", e);
+            console.warn("Auth initialization failed or timed out", e);
+            setUser(null); // Fallback to unauthenticated state (Login screen)
         } finally {
             setIsInitializing(false);
         }
@@ -259,6 +268,11 @@ const App: React.FC = () => {
   if (isInitializing) {
     return (
         <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center text-white">
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Unacademy_Logo.png/600px-Unacademy_Logo.png" 
+              alt="Unacademy" 
+              className="w-16 h-16 object-contain mb-6 animate-pulse" 
+            />
             <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
             <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Unacademy...</p>
         </div>
