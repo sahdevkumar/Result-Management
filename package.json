@@ -1,6 +1,5 @@
-
 {
-  "name": "educore-exam-system",
+  "name": "unacademy-exam-system",
   "version": "1.0.0",
   "type": "module",
   "scripts": {

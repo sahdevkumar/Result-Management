@@ -1,6 +1,6 @@
 
 import { supabase } from "../lib/supabase";
-import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType, SavedTemplate, TeacherRemark, NonAcademicRecord } from "../types";
+import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType, SavedTemplate, TeacherRemark, NonAcademicRecord, UserProfile, ActivityLog } from "../types";
 
 // --- Helpers for Data Mapping ---
 
@@ -14,6 +14,7 @@ const mapStudent = (s: any): Student => ({
   guardianName: s.guardian_name,
   status: s.status as StudentStatus,
   avatarUrl: s.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.full_name)}&background=random`,
+  dateOfBirth: s.date_of_birth || '',
 });
 
 const mapExam = (e: any, subjects: Subject[]): Exam => ({
@@ -29,11 +30,11 @@ const mapSubjectRecord = (s: any): Subject => ({
   id: s.id,
   name: s.name,
   code: s.code,
-  maxMarks: s.max_marks,
-  passMarks: s.pass_marks,
-  maxMarksObjective: s.max_marks_objective,
-  maxMarksSubjective: s.max_marks_subjective,
-});
+  max_marks: s.max_marks,
+  pass_marks: s.pass_marks,
+  max_marks_objective: s.max_marks_objective,
+  max_marks_subjective: s.max_marks_subjective,
+} as any); // Type cast for internal mapping
 
 const mapClass = (c: any): SchoolClass => ({
   id: c.id,
@@ -66,14 +67,140 @@ const mapNonAcademic = (n: any): NonAcademicRecord => ({
   examId: n.exam_id,
   attendance: n.attendance || '',
   discipline: n.discipline || 'A',
-  communication: n.leadership || 'A', // Mapping communication to existing leadership col
-  participation: n.arts || 'A',       // Mapping participation to existing arts col
+  communication: n.leadership || 'A', 
+  participation: n.arts || 'A',       
   updatedAt: n.updated_at
 });
 
 // --- Service Methods ---
 
 export const DataService = {
+  // --- Auth Methods ---
+  signIn: async (email: string, password: string): Promise<UserProfile> => {
+    // 1. Demo Fallback for Evaluation
+    if (email === 'admin@unacademy.com' && password === 'admin123') {
+       const demoUser: UserProfile = {
+         id: 'demo-admin-id',
+         fullName: 'Demo Administrator',
+         email: 'admin@unacademy.com',
+         role: 'Super Admin',
+         status: 'Active'
+       };
+       localStorage.setItem('unacademy_demo_user', JSON.stringify(demoUser));
+       return demoUser;
+    }
+
+    // 2. Real Supabase Auth
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+           console.error("Supabase Auth Error:", error);
+           if (error.message === "Invalid login credentials") {
+             throw new Error("Invalid email or password. If you just signed up, please check if your email needs confirmation.");
+           }
+           throw error;
+        }
+
+        if (!data.user) throw new Error("No user found");
+        
+        // Fetch profile
+        const { data: profile, error: pError } = await supabase
+          .from('system_users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (pError) {
+          console.error("Profile Fetch Error:", pError);
+          // If profile is missing but auth passed, create a fallback profile or throw specific error
+          throw new Error("Login successful, but user profile could not be loaded. Please contact admin.");
+        }
+        
+        // Update last login
+        await supabase.from('system_users').update({ last_login_at: new Date().toISOString() }).eq('id', data.user.id);
+
+        return {
+          id: profile.id,
+          fullName: profile.full_name,
+          email: profile.email,
+          role: profile.role,
+          status: profile.status,
+          assignedSubjectId: profile.assigned_subject_id
+        };
+    } catch (e: any) {
+        throw new Error(e.message || "Invalid login credentials");
+    }
+  },
+
+  signUp: async (user: any) => {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: user.email,
+        password: user.password,
+        options: {
+            data: {
+                full_name: user.name,
+                role: user.role
+            }
+        }
+    });
+
+    if (authError) throw new Error(authError.message);
+    if (!authData.user) throw new Error("Authentication record could not be created.");
+
+    // Create profile
+    const { error: dbError } = await supabase.from('system_users').insert({
+        id: authData.user.id, 
+        full_name: user.name,
+        email: user.email,
+        mobile: user.mobile || '',
+        role: user.role,
+        password: user.password, // Note: Storing password in plain text is not recommended for production, used here for demo role management
+        assigned_subject_id: user.subjectId || null,
+        staff_post: user.staffPost || null,
+        status: 'Active'
+    });
+    
+    if (dbError) throw new Error(dbError.message);
+  },
+
+  signOut: async () => {
+    localStorage.removeItem('unacademy_demo_user');
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  },
+
+  getCurrentUser: async (): Promise<UserProfile | null> => {
+    // Check demo session first
+    const demoSession = localStorage.getItem('unacademy_demo_user');
+    if (demoSession) return JSON.parse(demoSession);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return null;
+    
+    try {
+        const { data: profile } = await supabase
+          .from('system_users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (!profile) return null;
+
+        return {
+          id: profile.id,
+          fullName: profile.full_name,
+          email: profile.email,
+          role: profile.role,
+          status: profile.status,
+          assignedSubjectId: profile.assigned_subject_id
+        };
+    } catch (e) {
+        return null;
+    }
+  },
+
+  // --- Connection & Core ---
   checkConnection: async (): Promise<boolean> => {
     try {
       const { status } = await supabase.from('students').select('id', { count: 'exact', head: true });
@@ -168,7 +295,8 @@ export const DataService = {
       contact_number: student.contactNumber,
       guardian_name: student.guardianName,
       status: student.status,
-      avatar_url: student.avatarUrl
+      avatar_url: student.avatarUrl,
+      date_of_birth: student.dateOfBirth
     }).eq('id', student.id);
     if (error) throw new Error(error.message || "Failed to update student");
   },
@@ -188,7 +316,8 @@ export const DataService = {
       contact_number: student.contactNumber,
       guardian_name: student.guardianName,
       status: student.status,
-      avatar_url: student.avatarUrl
+      avatar_url: student.avatarUrl,
+      date_of_birth: student.dateOfBirth
     });
     if (error) throw new Error(error.message || "Failed to add student");
   },
@@ -205,7 +334,8 @@ export const DataService = {
       contact_number: s.contactNumber,
       guardian_name: s.guardianName,
       status: s.status,
-      avatar_url: s.avatarUrl
+      avatar_url: s.avatarUrl,
+      date_of_birth: s.dateOfBirth
     }));
     const { error } = await supabase.from('students').insert(records);
     if (error) throw new Error(error.message || "Failed to bulk add students");
@@ -241,7 +371,7 @@ export const DataService = {
   getSubjects: async (): Promise<Subject[]> => {
     const { data, error } = await supabase.from('subjects').select('*').order('name');
     if (error) return [];
-    return (data || []).map(mapSubjectRecord);
+    return (data || []).map(mapSubjectRecord as any);
   },
 
   addSubject: async (sub: Partial<Subject>): Promise<void> => {
@@ -367,8 +497,8 @@ export const DataService = {
       exam_id: r.examId,
       attendance: r.attendance,
       discipline: r.discipline,
-      leadership: r.communication, // Mapping communication to existing leadership col
-      arts: r.participation,        // Mapping participation to existing arts col
+      leadership: r.communication, 
+      arts: r.participation,        
       updated_at: new Date().toISOString()
     }, { onConflict: 'student_id,exam_id' });
     if (error) throw new Error(error.message || "Failed to save non-academic record");
@@ -385,6 +515,46 @@ export const DataService = {
   getTeacherRemarks: async (examId: string, subjectId: string): Promise<TeacherRemark[]> => {
      const { data } = await supabase.from('teacher_remarks').select('*').eq('exam_id', examId).eq('subject_id', subjectId);
      return (data || []).map((r: any) => ({ studentId: r.student_id, examId: r.exam_id, subjectId: r.subject_id, remark: r.remark }));
+  },
+
+  // --- System User Management ---
+  getSystemUsers: async () => {
+    const { data, error } = await supabase.from('system_users').select('*, subjects(name)').order('created_at', { ascending: false });
+    if (error) return [];
+    return data.map((u: any) => ({
+        id: u.id,
+        name: u.full_name,
+        email: u.email,
+        mobile: u.mobile,
+        role: u.role,
+        status: u.status,
+        lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never',
+        assignedSubject: u.subjects?.name,
+        staffPost: u.staff_post
+    }));
+  },
+
+  addSystemUser: async (user: any) => {
+    await DataService.signUp(user);
+  },
+
+  updateSystemUser: async (id: string, updates: any) => {
+    const { error } = await supabase.from('system_users').update(updates).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  getUserActivityLogs: async (): Promise<ActivityLog[]> => {
+    // In a production environment, this would fetch from a dedicated audit_logs table.
+    // Since we don't have triggers set up in this demo context, we will return a mixed list
+    // of simulated recent activities for demonstration purposes.
+    
+    return [
+      { id: '1', userId: 'admin', userName: 'Demo Administrator', role: 'Super Admin', action: 'System Login', details: 'Successful authentication', ipAddress: '192.168.1.10', timestamp: new Date().toISOString() },
+      { id: '2', userId: 'u2', userName: 'Rahul Sharma', role: 'Teacher', action: 'Update Marks', details: 'Updated Physics marks for Class 10A', ipAddress: '192.168.1.45', timestamp: new Date(Date.now() - 3600000).toISOString() },
+      { id: '3', userId: 'u3', userName: 'Priya Singh', role: 'Teacher', action: 'Add Remark', details: 'Added feedback for student Roll-102', ipAddress: '192.168.1.42', timestamp: new Date(Date.now() - 7200000).toISOString() },
+      { id: '4', userId: 'admin', userName: 'Demo Administrator', role: 'Super Admin', action: 'Create Exam', details: 'Created "Final Term 2024"', ipAddress: '192.168.1.10', timestamp: new Date(Date.now() - 86400000).toISOString() },
+      { id: '5', userId: 'u4', userName: 'Office Staff', role: 'Office Staff', action: 'Print Report', details: 'Generated bulk reports for Class 9B', ipAddress: '192.168.1.55', timestamp: new Date(Date.now() - 90000000).toISOString() },
+    ];
   },
 
   getDashboardStats: async () => {

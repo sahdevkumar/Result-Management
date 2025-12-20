@@ -12,6 +12,15 @@ export enum ExamStatus {
   Published = 'Published'
 }
 
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'Super Admin' | 'Principal' | 'Admin' | 'Teacher' | 'Office Staff';
+  status: 'Active' | 'Locked';
+  assignedSubjectId?: string;
+}
+
 export interface Student {
   id: string;
   fullName: string;
@@ -22,6 +31,7 @@ export interface Student {
   guardianName: string;
   status: StudentStatus;
   avatarUrl: string;
+  dateOfBirth?: string;
 }
 
 export interface Subject {
@@ -125,4 +135,15 @@ export interface SavedTemplate {
   width: number;
   height: number;
   createdAt: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
+  ipAddress: string;
+  timestamp: string;
+  role: string;
 }

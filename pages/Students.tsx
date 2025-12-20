@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
 import { Student, StudentStatus, SchoolClass } from '../types';
-import { Search, Plus, Filter, Trash2, X, RefreshCw, Pencil, Loader2, AlertTriangle, Upload, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, Filter, Trash2, X, RefreshCw, Pencil, Loader2, AlertTriangle, Upload, FileDown, FileSpreadsheet, GraduationCap, Eye, User, Phone, Shield, Calendar } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import clsx from 'clsx';
 
@@ -12,6 +13,7 @@ export const Students: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [classFilter, setClassFilter] = useState<string>('All');
   
   // Modal State for Add/Edit
   const [showModal, setShowModal] = useState(false);
@@ -21,7 +23,8 @@ export const Students: React.FC = () => {
     classId: '',
     contactNumber: '',
     guardianName: '',
-    status: StudentStatus.Active
+    status: StudentStatus.Active,
+    dateOfBirth: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,6 +36,10 @@ export const Students: React.FC = () => {
   // Modal State for Import
   const [showImportModal, setShowImportModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [importClassId, setImportClassId] = useState<string>('');
+
+  // Profile Preview State
+  const [previewStudent, setPreviewStudent] = useState<Student | null>(null);
 
   const { showToast } = useToast();
 
@@ -63,7 +70,8 @@ export const Students: React.FC = () => {
         classId: classes[0]?.id || '',
         contactNumber: '',
         guardianName: '',
-        status: StudentStatus.Active
+        status: StudentStatus.Active,
+        dateOfBirth: ''
       });
       setEditingId(null);
       setShowModal(true);
@@ -76,7 +84,8 @@ export const Students: React.FC = () => {
         classId: cls ? cls.id : '',
         contactNumber: student.contactNumber,
         guardianName: student.guardianName,
-        status: student.status
+        status: student.status,
+        dateOfBirth: student.dateOfBirth || ''
       });
       setEditingId(student.id);
       setShowModal(true);
@@ -126,7 +135,8 @@ export const Students: React.FC = () => {
         contactNumber: formData.contactNumber,
         guardianName: formData.guardianName,
         status: formData.status,
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.fullName)}&background=random`
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.fullName)}&background=random`,
+        dateOfBirth: formData.dateOfBirth
       };
 
       if (editingId) {
@@ -157,13 +167,24 @@ export const Students: React.FC = () => {
   };
 
   const downloadSampleCsv = () => {
-    const headers = "Full Name,Class,Section,Guardian Name,Contact Number";
-    const sample = "John Doe,10,A,Robert Doe,9876543210\nJane Smith,9,B,Mary Smith,9123456780";
+    let headers = "";
+    let sample = "";
+    
+    if (importClassId) {
+        // Simple format for class-wise import
+        headers = "Full Name,Guardian Name,Contact Number,Date of Birth";
+        sample = "John Doe,Robert Doe,9876543210,2008-05-15\nJane Smith,Mary Smith,9123456780,2008-08-22";
+    } else {
+        // Standard format for bulk import
+        headers = "Full Name,Class,Section,Guardian Name,Contact Number,Date of Birth";
+        sample = "John Doe,10,A,Robert Doe,9876543210,2008-05-15\nJane Smith,9,B,Mary Smith,9123456780,2009-02-10";
+    }
+
     const blob = new Blob([`${headers}\n${sample}`], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = "student_import_sample.csv";
+    a.download = importClassId ? "class_student_import_sample.csv" : "bulk_student_import_sample.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -191,31 +212,47 @@ export const Students: React.FC = () => {
           if (lines.length < 2) throw new Error("File is empty or missing data rows");
 
           const newStudents: Omit<Student, 'id' | 'rollNumber'>[] = [];
+          const targetClass = classes.find(c => c.id === importClassId);
           
           // Skip header row (index 0)
           for (let i = 1; i < lines.length; i++) {
-              // Handle CSV line parsing (simple split by comma)
-              // For robustness with quoted strings, a library like papaparse is recommended, 
-              // but for this sample we use simple split assuming standard input.
               const cols = lines[i].split(',').map(c => c.trim());
               
-              if (cols.length < 5) continue; // Skip incomplete lines
+              if (targetClass) {
+                  // Class-wise import: Expecting [Name, Guardian, Contact, DOB]
+                  if (cols.length < 3) continue; 
 
-              newStudents.push({
-                  fullName: cols[0],
-                  className: cols[1],
-                  section: cols[2],
-                  guardianName: cols[3],
-                  contactNumber: cols[4],
-                  status: StudentStatus.Active,
-                  avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(cols[0])}&background=random`
-              });
+                  newStudents.push({
+                      fullName: cols[0],
+                      className: targetClass.className,
+                      section: targetClass.section,
+                      guardianName: cols[1],
+                      contactNumber: cols[2],
+                      dateOfBirth: cols[3] || '',
+                      status: StudentStatus.Active,
+                      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(cols[0])}&background=random`
+                  });
+              } else {
+                  // Generic import: Expecting [Name, Class, Section, Guardian, Contact, DOB]
+                  if (cols.length < 5) continue;
+
+                  newStudents.push({
+                      fullName: cols[0],
+                      className: cols[1],
+                      section: cols[2],
+                      guardianName: cols[3],
+                      contactNumber: cols[4],
+                      dateOfBirth: cols[5] || '',
+                      status: StudentStatus.Active,
+                      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(cols[0])}&background=random`
+                  });
+              }
           }
 
           if (newStudents.length === 0) throw new Error("No valid student records found in file");
 
           await DataService.bulkAddStudents(newStudents);
-          showToast(`Successfully imported ${newStudents.length} students`, 'success');
+          showToast(`Successfully imported ${newStudents.length} students${targetClass ? ` to ${targetClass.className}-${targetClass.section}` : ''}`, 'success');
           setShowImportModal(false);
           await loadData();
       } catch (e: any) {
@@ -230,7 +267,8 @@ export const Students: React.FC = () => {
     const matchesSearch = s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesClass = classFilter === 'All' || `${s.className}-${s.section}` === classFilter;
+    return matchesSearch && matchesStatus && matchesClass;
   });
 
   return (
@@ -242,7 +280,7 @@ export const Students: React.FC = () => {
         </div>
         <div className="flex gap-2">
             <button 
-                onClick={() => setShowImportModal(true)}
+                onClick={() => { setShowImportModal(true); setImportClassId(''); }}
                 className="flex items-center gap-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
             >
                 <Upload size={18} />
@@ -275,30 +313,56 @@ export const Students: React.FC = () => {
              <button 
                 onClick={() => setShowFilter(!showFilter)}
                 className={clsx(
-                    "flex items-center gap-2 px-3 py-2 border rounded-lg text-sm hover:bg-slate-50",
+                    "flex items-center gap-2 px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 transition-all",
                     showFilter ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-300 text-slate-600"
                 )}
              >
                 <Filter size={16} />
-                <span>Filter</span>
+                <span>Advanced Filter</span>
              </button>
           </div>
         </div>
 
         {/* Extended Filter Panel */}
         {showFilter && (
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex gap-4">
-                <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">Status</label>
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-6 animate-in slide-in-from-top-2 duration-200">
+                <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Profile</label>
                     <select 
-                        className="text-sm border border-slate-300 rounded p-1 bg-white text-slate-900"
+                        className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-slate-900 font-bold outline-none focus:ring-2 focus:ring-blue-500/20"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
-                        <option value="All">All Status</option>
-                        <option value={StudentStatus.Active}>Active</option>
-                        <option value={StudentStatus.Inactive}>Inactive</option>
+                        <option value="All">All Statuses</option>
+                        <option value={StudentStatus.Active}>Active Only</option>
+                        <option value={StudentStatus.Inactive}>Inactive Only</option>
                     </select>
+                </div>
+                <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Class Assignment</label>
+                    <div className="relative">
+                        <select 
+                            className="text-sm border border-slate-300 rounded-lg pl-8 pr-4 py-1.5 bg-white text-slate-900 font-bold outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                            value={classFilter}
+                            onChange={(e) => setClassFilter(e.target.value)}
+                        >
+                            <option value="All">All Classes</option>
+                            {classes.map(c => (
+                                <option key={c.id} value={`${c.className}-${c.section}`}>{c.className} - {c.section}</option>
+                            ))}
+                        </select>
+                        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                            <GraduationCap size={14} />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-end">
+                    <button 
+                        onClick={() => { setStatusFilter('All'); setClassFilter('All'); setSearchTerm(''); }}
+                        className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors py-2"
+                    >
+                        Reset All Filters
+                    </button>
                 </div>
             </div>
         )}
@@ -323,7 +387,13 @@ export const Students: React.FC = () => {
                 </tr>
               ) : filteredStudents.length === 0 ? (
                 <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">No students found.</td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                        <div className="flex flex-col items-center gap-2">
+                            <Search className="text-slate-300" size={40} />
+                            <p className="font-medium">No students match your criteria.</p>
+                            <button onClick={() => { setStatusFilter('All'); setClassFilter('All'); setSearchTerm(''); }} className="text-blue-600 text-sm font-bold hover:underline">Clear all filters</button>
+                        </div>
+                    </td>
                 </tr>
               ) : (
                 filteredStudents.map((student) => (
@@ -355,6 +425,13 @@ export const Students: React.FC = () => {
                     <td className="px-6 py-3 text-right">
                       <div className="flex justify-end gap-2">
                           <button 
+                            onClick={() => setPreviewStudent(student)}
+                            title="Profile Preview"
+                            className="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition-colors"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button 
                             onClick={() => handleEdit(student)}
                             title="Edit Student"
                             className="text-slate-400 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors"
@@ -377,6 +454,81 @@ export const Students: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Profile Preview Modal */}
+      {previewStudent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-indigo-950/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
+           <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+               {/* Hero Header */}
+               <div className="relative h-32 bg-gradient-to-br from-indigo-500 to-violet-600">
+                  <button 
+                    onClick={() => setPreviewStudent(null)}
+                    className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/10 hover:bg-black/20 p-2 rounded-full transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                  <div className="absolute -bottom-12 left-8 p-1 bg-white rounded-3xl shadow-xl">
+                      <img src={previewStudent.avatarUrl} alt="" className="w-24 h-24 rounded-[22px] object-cover" />
+                  </div>
+               </div>
+               
+               <div className="pt-16 pb-8 px-8 space-y-6">
+                  <div>
+                      <h3 className="text-2xl font-black text-slate-800 tracking-tight">{previewStudent.fullName}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md">Roll: {previewStudent.rollNumber}</span>
+                          <span className={clsx(
+                             "text-[10px] font-black uppercase px-2 py-0.5 rounded-md",
+                             previewStudent.status === StudentStatus.Active ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                          )}>
+                             {previewStudent.status}
+                          </span>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex items-center gap-2 text-slate-400 mb-1">
+                              <GraduationCap size={14} />
+                              <span className="text-[10px] font-black uppercase tracking-widest">Class</span>
+                          </div>
+                          <p className="font-bold text-slate-800">{previewStudent.className} - {previewStudent.section}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex items-center gap-2 text-slate-400 mb-1">
+                              <Phone size={14} />
+                              <span className="text-[10px] font-black uppercase tracking-widest">Contact</span>
+                          </div>
+                          <p className="font-bold text-slate-800 truncate" title={previewStudent.contactNumber}>{previewStudent.contactNumber || 'N/A'}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex items-center gap-2 text-slate-400 mb-1">
+                              <Calendar size={14} />
+                              <span className="text-[10px] font-black uppercase tracking-widest">Date of Birth</span>
+                          </div>
+                          <p className="font-bold text-slate-800 truncate" title={previewStudent.dateOfBirth}>{previewStudent.dateOfBirth || 'N/A'}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex items-center gap-2 text-slate-400 mb-1">
+                              <User size={14} />
+                              <span className="text-[10px] font-black uppercase tracking-widest">Guardian</span>
+                          </div>
+                          <p className="font-bold text-slate-800 truncate">{previewStudent.guardianName}</p>
+                      </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100">
+                      <button 
+                        onClick={() => setPreviewStudent(null)}
+                        className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-200"
+                      >
+                         Dismiss Preview
+                      </button>
+                  </div>
+               </div>
+           </div>
+        </div>
+      )}
 
       {/* Add/Edit Student Modal */}
       {showModal && (
@@ -420,7 +572,7 @@ export const Students: React.FC = () => {
                     </select>
                  </div>
 
-                 <div className="col-span-2">
+                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Mobile Number</label>
                     <input 
                       type="tel" 
@@ -428,6 +580,17 @@ export const Students: React.FC = () => {
                       placeholder="e.g. 9876543210"
                       className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
                       value={formData.contactNumber}
+                      onChange={handleInputChange}
+                    />
+                 </div>
+
+                 <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Date of Birth</label>
+                    <input 
+                      type="date" 
+                      name="dateOfBirth"
+                      className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-900"
+                      value={formData.dateOfBirth}
                       onChange={handleInputChange}
                     />
                  </div>
@@ -500,15 +663,33 @@ export const Students: React.FC = () => {
                </div>
                
                <div className="p-6 space-y-6">
+                   <div>
+                       <label className="block text-sm font-bold text-slate-700 mb-2">Target Class (Optional)</label>
+                       <select 
+                           className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white text-slate-900"
+                           value={importClassId}
+                           onChange={(e) => setImportClassId(e.target.value)}
+                       >
+                           <option value="">Select a class to enable simplified import...</option>
+                           {classes.map(c => (
+                               <option key={c.id} value={c.id}>{c.className} - {c.section}</option>
+                           ))}
+                       </select>
+                       <p className="text-[10px] text-slate-500 mt-1">If selected, the CSV only needs Name, Guardian, Contact, and DOB fields.</p>
+                   </div>
+
                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
                        <h4 className="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
                            <AlertTriangle size={16} /> Instructions
                        </h4>
                        <ul className="list-disc list-inside text-xs text-blue-700 space-y-1">
                            <li>File must be in <strong>.CSV</strong> format.</li>
-                           <li>Required columns: <strong>Full Name, Class, Section, Guardian Name, Contact Number</strong>.</li>
-                           <li>Class and Section must match exactly with existing classes in the system.</li>
+                           <li>
+                               Required columns: {importClassId ? <strong>Full Name, Guardian Name, Contact Number, Date of Birth</strong> : <strong>Full Name, Class, Section, Guardian Name, Contact Number, Date of Birth</strong>}
+                           </li>
+                           {!importClassId && <li>Class and Section must match exactly with existing classes in the system.</li>}
                            <li>Roll numbers will be auto-generated.</li>
+                           <li>Date format should be YYYY-MM-DD.</li>
                        </ul>
                        <button 
                            onClick={downloadSampleCsv}

@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { DataService } from '../services/dataService';
-import { Exam, Subject, Student, MarkRecord, SchoolClass } from '../types';
-import { Save, AlertCircle, CheckCircle, Calculator, Info, BookOpen, GraduationCap, Calendar, Loader2 } from 'lucide-react';
+import { Exam, Subject, Student, MarkRecord, SchoolClass, UserProfile } from '../types';
+import { Save, AlertCircle, CheckCircle, Calculator, Info, BookOpen, GraduationCap, Calendar, Loader2, Lock } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import clsx from 'clsx';
 
 export const MarksEntry: React.FC = () => {
+  const { user } = useOutletContext<{ user: UserProfile }>();
+  
   // Selection State
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -39,20 +42,30 @@ export const MarksEntry: React.FC = () => {
             DataService.getClasses(),
             DataService.getStudents()
         ]);
+        
         setExams(eData);
-        setSubjects(sData);
         setClasses(cData);
         setStudents(stData);
         
+        // --- Permission Logic: Filter Subjects for Teachers ---
+        let filteredSubjects = sData;
+        if (user.role === 'Teacher' && user.assignedSubjectId) {
+            filteredSubjects = sData.filter(s => s.id === user.assignedSubjectId);
+        }
+        setSubjects(filteredSubjects);
+        
         if(eData.length > 0) setSelectedExamId(eData[0].id);
         if(cData.length > 0) setSelectedClassId(cData[0].id);
-        if(sData.length > 0) setSelectedSubjectId(sData[0].id);
+        
+        // Auto-select first available subject (or the teacher's only subject)
+        if(filteredSubjects.length > 0) setSelectedSubjectId(filteredSubjects[0].id);
+        
       } catch (err) {
         showToast("Failed to load initial data", 'error');
       }
     };
     init();
-  }, []);
+  }, [user]);
 
   // Sync Max Marks when subject changes (Default Fallback)
   useEffect(() => {
@@ -89,9 +102,6 @@ export const MarksEntry: React.FC = () => {
       const records = await DataService.getMarks(selectedExamId, selectedSubjectId);
       const marksMap: Record<string, MarkRecord> = {};
       
-      // If marks exist for this exam/subject, use the stored max marks from the table
-      // This overrides the default subject max marks, allowing for exam-specific max marks.
-      // We check > 0 to ensure we don't accidentally pull 0s from legacy data or initialized rows
       if (records.length > 0) {
         const firstRecord = records[0];
         if ((firstRecord.objMaxMarks || 0) > 0 || (firstRecord.subMaxMarks || 0) > 0) {
@@ -125,7 +135,6 @@ export const MarksEntry: React.FC = () => {
             subjectId: selectedSubjectId
         };
         
-        // Auto-calculate grade based on total percentage
         const totalObtained = updated.objMarks + updated.subMarks;
         const totalMax = localMaxObj + localMaxSubj;
         const pct = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
@@ -144,13 +153,12 @@ export const MarksEntry: React.FC = () => {
     }
 
     if (localMaxObj === 0 && localMaxSubj === 0) {
-      showToast("Please define Maximum Marks (Objective or Subjective) before saving", "error");
+      showToast("Please define Maximum Marks before saving", "error");
       return;
     }
 
     setSaving(true);
     try {
-        // 1. Update Global Subject Config first (Optional, but keeps global sync)
         await DataService.updateSubject({
             ...currentSubject,
             maxMarksObjective: localMaxObj,
@@ -158,9 +166,6 @@ export const MarksEntry: React.FC = () => {
             maxMarks: localMaxObj + localMaxSubj
         });
 
-        // 2. Prepare Student Mark Records
-        // IMPORTANT: We explicitly include the current localMaxObj/Subj here to ensure
-        // the marks table captures the max marks at the time of entry.
         const recordsToSave = filteredStudents.map(s => {
             const record = marksData[s.id] || createEmptyRecord(s.id);
             return {
@@ -172,26 +177,24 @@ export const MarksEntry: React.FC = () => {
             };
         });
         
-        // 3. Bulk Upsert Marks
         await DataService.bulkUpdateMarks(recordsToSave);
-        
         showToast("Marks and Configuration saved successfully!", 'success');
         
-        // Refresh local subjects to sync UI
         const sData = await DataService.getSubjects();
-        setSubjects(sData);
-        // Refresh marks from DB
+        let updatedFilteredSubjects = sData;
+        if (user.role === 'Teacher' && user.assignedSubjectId) {
+            updatedFilteredSubjects = sData.filter(s => s.id === user.assignedSubjectId);
+        }
+        setSubjects(updatedFilteredSubjects);
         await loadMarks();
     } catch(e: any) {
-        console.error("Save failed:", e);
-        showToast(`Save failed: ${e.message || "Unknown database error"}`, 'error');
+        showToast(`Save failed: ${e.message}`, 'error');
     } finally {
         setSaving(false);
     }
   };
 
   const currentClass = classes.find(c => c.id === selectedClassId);
-
   const filteredStudents = students.filter(student => {
     if (!selectedClassId || !currentClass) return true;
     return student.className === currentClass.className && student.section === currentClass.section;
@@ -203,9 +206,9 @@ export const MarksEntry: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-             <Calculator className="text-indigo-600" /> Result Management Entry
+             <Calculator className="text-indigo-600" /> Marks Entry Module
           </h1>
-          <p className="text-slate-500 text-sm">Select subject and define max marks to begin entry.</p>
+          <p className="text-slate-500 text-sm">Add or modify student results for examinations.</p>
         </div>
         <button 
           onClick={handleSave} 
@@ -217,7 +220,7 @@ export const MarksEntry: React.FC = () => {
         </button>
       </div>
 
-      {/* Top Filter Bar */}
+      {/* Selectors */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
@@ -248,17 +251,29 @@ export const MarksEntry: React.FC = () => {
            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
               <BookOpen size={12} /> 3. Subject Module
            </label>
-           <select 
-             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-indigo-700" 
-             value={selectedSubjectId} 
-             onChange={(e) => setSelectedSubjectId(e.target.value)}
-           >
-             {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
-           </select>
+           <div className="relative group">
+              <select 
+                disabled={user.role === 'Teacher'}
+                className={clsx(
+                    "w-full border rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold appearance-none",
+                    user.role === 'Teacher' ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-slate-50 text-indigo-700 border-slate-200 hover:border-indigo-300"
+                )}
+                value={selectedSubjectId} 
+                onChange={(e) => setSelectedSubjectId(e.target.value)}
+              >
+                {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+              </select>
+              {user.role === 'Teacher' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <Lock size={14} />
+                  </div>
+              )}
+           </div>
+           {user.role === 'Teacher' && <p className="text-[9px] text-indigo-500 font-bold mt-1.5 uppercase tracking-tighter">Restricted to assigned subject</p>}
         </div>
       </div>
 
-      {/* Configuration Header for Max Marks Entry */}
+      {/* Max Marks Section */}
       <div className="bg-indigo-600 p-6 rounded-2xl text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
@@ -266,7 +281,7 @@ export const MarksEntry: React.FC = () => {
               </div>
               <div>
                   <h3 className="font-bold text-lg leading-tight">Define Maximum Marks</h3>
-                  <p className="text-indigo-100 text-xs">Set these once per subject before entering student marks.</p>
+                  <p className="text-indigo-100 text-xs">Configure the scale for the current evaluation.</p>
               </div>
           </div>
           <div className="flex gap-4 items-center">
@@ -274,7 +289,7 @@ export const MarksEntry: React.FC = () => {
                   <span className="text-[10px] font-black uppercase text-indigo-200 mb-1">Objective Max</span>
                   <input 
                     type="number" 
-                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black text-white focus:bg-white focus:text-indigo-600 outline-none transition-all placeholder-white/50"
+                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black text-white focus:bg-white focus:text-indigo-600 outline-none transition-all"
                     value={localMaxObj}
                     onChange={(e) => setLocalMaxObj(parseInt(e.target.value) || 0)}
                   />
@@ -284,7 +299,7 @@ export const MarksEntry: React.FC = () => {
                   <span className="text-[10px] font-black uppercase text-indigo-200 mb-1">Subjective Max</span>
                   <input 
                     type="number" 
-                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black text-white focus:bg-white focus:text-indigo-600 outline-none transition-all placeholder-white/50"
+                    className="w-24 bg-white/10 border border-white/20 rounded-xl p-2 text-center text-xl font-black text-white focus:bg-white focus:text-indigo-600 outline-none transition-all"
                     value={localMaxSubj}
                     onChange={(e) => setLocalMaxSubj(parseInt(e.target.value) || 0)}
                   />
@@ -297,14 +312,11 @@ export const MarksEntry: React.FC = () => {
           </div>
       </div>
 
-      {/* Entry Table */}
+      {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
          {loading && (
              <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
-                 <div className="flex flex-col items-center gap-2">
-                     <Loader2 className="animate-spin text-indigo-600" size={32} />
-                     <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Loading Records...</p>
-                 </div>
+                 <Loader2 className="animate-spin text-indigo-600" size={32} />
              </div>
          )}
          <div className="overflow-x-auto">
@@ -320,7 +332,7 @@ export const MarksEntry: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {filteredStudents.length === 0 ? (
-                      <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic font-medium">No students found for this class.</td></tr>
+                      <tr><td colSpan={5} className="p-12 text-center text-slate-400">No students matching criteria.</td></tr>
                     ) : (
                       filteredStudents.map(student => {
                         const record = marksData[student.id] || createEmptyRecord(student.id);
@@ -333,10 +345,10 @@ export const MarksEntry: React.FC = () => {
                         const isSubInvalid = (record.subMarks || 0) > localMaxSubj;
 
                         return (
-                            <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="font-bold text-slate-800 text-sm">{student.fullName}</div>
-                                    <div className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{student.rollNumber}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono uppercase">{student.rollNumber}</div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="relative max-w-[120px] mx-auto">
@@ -344,17 +356,11 @@ export const MarksEntry: React.FC = () => {
                                             type="number" 
                                             className={clsx(
                                                 "w-full p-2.5 rounded-xl border text-center font-black text-lg outline-none transition-all",
-                                                isObjInvalid 
-                                                  ? "border-red-500 bg-red-50 text-red-600" 
-                                                  : "border-slate-200 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
+                                                isObjInvalid ? "border-red-500 bg-red-50 text-red-600" : "border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white"
                                             )}
                                             value={record.objMarks || ''}
                                             onChange={(e) => handleScoreUpdate(student.id, 'objMarks', e.target.value)}
-                                            placeholder="0"
                                         />
-                                        {isObjInvalid && (
-                                            <div className="absolute -top-2 -right-1 text-red-500 bg-white rounded-full"><AlertCircle size={14} /></div>
-                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
@@ -363,31 +369,23 @@ export const MarksEntry: React.FC = () => {
                                             type="number" 
                                             className={clsx(
                                                 "w-full p-2.5 rounded-xl border text-center font-black text-lg outline-none transition-all",
-                                                isSubInvalid 
-                                                  ? "border-red-500 bg-red-50 text-red-600" 
-                                                  : "border-slate-200 bg-slate-50 text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
+                                                isSubInvalid ? "border-red-500 bg-red-50 text-red-600" : "border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white"
                                             )}
                                             value={record.subMarks || ''}
                                             onChange={(e) => handleScoreUpdate(student.id, 'subMarks', e.target.value)}
-                                            placeholder="0"
                                         />
-                                        {isSubInvalid && (
-                                            <div className="absolute -top-2 -right-1 text-red-500 bg-white rounded-full"><AlertCircle size={14} /></div>
-                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                     <div className="flex flex-col items-center">
-                                      <span className="text-xl font-black text-slate-900 leading-none">{totalObtained}</span>
-                                      <span className="text-[9px] text-slate-400 font-bold mt-1.5 uppercase">of {totalMax} ({percentage.toFixed(1)}%)</span>
+                                      <span className="text-xl font-black text-slate-900">{totalObtained}</span>
+                                      <span className="text-[9px] text-slate-400 font-bold uppercase">of {totalMax}</span>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                     <div className={clsx(
                                         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                                        isPass 
-                                          ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
-                                          : "bg-red-50 text-red-700 border-red-100"
+                                        isPass ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"
                                     )}>
                                         {isPass ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                                         {isPass ? 'Pass' : 'Fail'}
@@ -400,18 +398,6 @@ export const MarksEntry: React.FC = () => {
                 </tbody>
             </table>
          </div>
-      </div>
-
-      {/* Pass Criteria Info */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Info size={16} /></div>
-              <p className="text-xs text-slate-600">Calculations follow the standard <b>33% passing criteria</b> across combined components.</p>
-          </div>
-          <div className="text-right">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entry Status</p>
-              <p className="text-xs font-black text-slate-800">{Object.keys(marksData).length} / {filteredStudents.length} Students Record Prepared</p>
-          </div>
       </div>
     </div>
   );
