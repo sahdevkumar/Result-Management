@@ -1,4 +1,5 @@
 
+// ... existing imports ...
 import React, { useState, useEffect, useRef } from 'react';
 import { DataService } from '../services/dataService';
 import { Student, Exam, MarkRecord, Subject, SchoolClass } from '../types';
@@ -8,6 +9,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 export const Reports: React.FC = () => {
+  // ... (existing state and logic unchanged) ...
   const [students, setStudents] = useState<Student[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -124,7 +126,7 @@ export const Reports: React.FC = () => {
         </div>
         <div className="lg:col-span-2">
            {selectedStudentId ? (
-              <div ref={reportRef} className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200 print:shadow-none print:border-none print:w-full animate-in fade-in duration-300">
+              <div ref={reportRef} className="bg-white iso-bg rounded-xl shadow-lg overflow-hidden border border-slate-200 print:shadow-none print:border-none print:w-full animate-in fade-in duration-300">
                  <div className="bg-slate-800 p-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:bg-slate-800 print:text-white print-color-adjust-exact">
                     <div><h2 className="text-2xl font-serif font-bold">Progress Report</h2><p className="text-slate-400 text-sm print:text-slate-300">{exams.find(e => e.id === selectedExamId)?.name}</p></div>
                     <div className="text-left sm:text-right"><p className="text-2xl font-bold text-green-400">{percentage.toFixed(1)}%</p><p className="text-xs text-slate-400 uppercase tracking-wider print:text-slate-300">Overall Aggregate</p></div>

@@ -1,4 +1,5 @@
 
+// ... existing imports ...
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Printer, Loader2, CheckSquare, Square, FileText, Users, Search, Maximize2, Layout
@@ -13,6 +14,7 @@ type PaperSize = 'A4' | 'Letter';
 type Orientation = 'portrait' | 'landscape';
 
 export const PrintReport: React.FC = () => {
+  // ... (existing logic unchanged) ...
   const [activeTab, setActiveTab] = useState<PrintTab>('single');
   const { showToast } = useToast();
   
@@ -181,6 +183,7 @@ export const PrintReport: React.FC = () => {
         `}
       </style>
 
+      {/* ... (Header and Sidebar unchanged) ... */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Print Center</h1>
@@ -340,7 +343,7 @@ export const PrintReport: React.FC = () => {
                       <FileText size={14} /> Live Print Preview ({orientation === 'portrait' ? 'Portrait' : 'Landscape'})
                   </div>
                   <div 
-                    className="bg-white shadow-2xl relative overflow-hidden border border-slate-200 shrink-0"
+                    className="bg-white iso-bg shadow-2xl relative overflow-hidden border border-slate-200 shrink-0"
                     style={{ 
                         width: `${previewSize.width}px`, 
                         height: `${previewSize.height}px`,

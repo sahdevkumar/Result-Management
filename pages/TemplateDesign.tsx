@@ -4,7 +4,7 @@ import {
   Image as ImageIcon, Type, Save, Trash2, Layout, Maximize, Minus, Plus, 
   List as ListIcon, Palette, Settings, Bold, Italic, Upload, Loader2,
   Copy, Edit, Share2, FileJson, Download, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  FileUp, RefreshCw
+  FileUp, RefreshCw, Variable
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DesignElement, SavedTemplate } from '../types';
@@ -242,6 +242,14 @@ export const TemplateDesign: React.FC = () => {
     }));
   };
 
+  const insertVariable = (variable: string) => {
+    if (!selectedId) return;
+    setElements(prev => prev.map(el => {
+        if (el.id === selectedId) return { ...el, content: el.content + ' ' + variable };
+        return el;
+    }));
+  };
+
   const deleteElement = () => {
     if (!selectedId) return;
     setElements(prev => prev.filter(el => el.id !== selectedId));
@@ -347,6 +355,17 @@ export const TemplateDesign: React.FC = () => {
                           <div>
                               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Content</label>
                               <textarea className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded text-xs focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white bg-white dark:bg-slate-900" rows={3} value={selectedElement.content} onChange={(e) => updateElementContent(e.target.value)} />
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {['{{name}}', '{{roll}}', '{{class}}', '{{section}}', '{{exam}}'].map(v => (
+                                    <button 
+                                        key={v}
+                                        onClick={() => insertVariable(v)}
+                                        className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                                    >
+                                        {v}
+                                    </button>
+                                ))}
+                              </div>
                           </div>
                           <div className="flex gap-2">
                               <div className="flex-1">

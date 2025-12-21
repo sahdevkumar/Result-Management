@@ -747,7 +747,7 @@ export const ScoreCard: React.FC = () => {
         {activeTab === 'layout' ? (
             <div className="flex gap-6 w-full h-[calc(100vh-14rem)]">
                 <div className="flex-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl overflow-auto border border-slate-300 dark:border-slate-700 flex justify-center p-8 relative">
-                    <div className="relative origin-top" style={{ width: '794px', height: '1123px', transform: 'scale(0.65)' }}>
+                    <div className="relative origin-top bg-white shadow-2xl" style={{ width: '794px', height: '1123px', transform: 'scale(0.65)' }}>
                         {layout.filter(l => l.isVisible).map(block => (
                              <div 
                                 key={block.id}
