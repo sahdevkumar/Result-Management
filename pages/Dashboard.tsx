@@ -40,6 +40,19 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType
   </div>
 );
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs">
+        <p className="font-bold mb-1">{label}</p>
+        <p className="text-indigo-600 dark:text-indigo-400">Pass: {payload[0].value}%</p>
+        <p className="text-slate-500 dark:text-slate-400">Fail: {payload[1].value}%</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, passRate: 0, pending: 0 });
   const { showToast } = useToast();
@@ -127,10 +140,7 @@ export const Dashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                <Tooltip 
-                    cursor={{fill: '#f8fafc', opacity: 0.1}}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', backgroundColor: '#fff', color: '#1e293b' }}
-                />
+                <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc', opacity: 0.1}} />
                 <Bar dataKey="pass" name="Pass %" fill="url(#colorPass)" radius={[6, 6, 0, 0]} barSize={32} />
                 <Bar dataKey="fail" name="Fail %" fill="#cbd5e1" radius={[6, 6, 0, 0]} barSize={32} className="dark:fill-slate-700" />
               </BarChart>

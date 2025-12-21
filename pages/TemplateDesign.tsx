@@ -3,7 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Image as ImageIcon, Type, Save, Trash2, Layout, Maximize, Minus, Plus, 
   List as ListIcon, Palette, Settings, Bold, Italic, Upload, Loader2,
-  Copy, Edit, Share2
+  Copy, Edit, Share2, FileJson, Download, AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  FileUp, RefreshCw
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DesignElement, SavedTemplate } from '../types';
@@ -21,6 +22,9 @@ export const TemplateDesign: React.FC = () => {
   const [scale, setScale] = useState(0.8);
   const [loading, setLoading] = useState(true);
   
+  // Template Persistence State
+  const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState<string>('');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Canvas Size State
@@ -58,15 +62,22 @@ export const TemplateDesign: React.FC = () => {
     fetchData();
   }, []);
 
-  const saveTemplate = async () => {
-    const name = prompt("Enter a name for this template:", `Template ${savedTemplates.length + 1}`);
-    if (!name) return;
+  // --- Save / Load / Export Logic ---
+
+  const saveTemplate = async (asNew: boolean = false) => {
+    let id = loadedTemplateId;
+    let name = templateName;
+
+    if (asNew || !id) {
+        name = prompt("Enter a name for this template:", templateName || `Template ${savedTemplates.length + 1}`) || '';
+        if (!name) return;
+        id = Date.now().toString();
+    }
 
     setIsSavingTemplate(true);
-    const newId = Date.now().toString();
     try {
         await DataService.saveTemplate({
-            id: newId,
+            id: id,
             name,
             elements,
             width: pageSize.width,
@@ -76,8 +87,13 @@ export const TemplateDesign: React.FC = () => {
         // Refresh list
         const updated = await DataService.getTemplates();
         setSavedTemplates(updated);
-        showToast("Layout saved to database", 'success');
-        setActiveTab('list');
+        
+        // Update local state to reflect saved status
+        setLoadedTemplateId(id);
+        setTemplateName(name);
+        
+        showToast(asNew ? "Saved as new template" : "Template updated", 'success');
+        if(!loadedTemplateId && !asNew) setActiveTab('list');
     } catch (e) {
         showToast("Failed to save layout.", 'error');
     } finally {
@@ -90,21 +106,74 @@ export const TemplateDesign: React.FC = () => {
     try {
         await DataService.deleteTemplate(id);
         setSavedTemplates(prev => prev.filter(t => t.id !== id));
+        if (loadedTemplateId === id) {
+            setLoadedTemplateId(null);
+            setTemplateName('');
+        }
         showToast("Template deleted", 'info');
     } catch (e) {
         showToast("Failed to delete template", 'error');
     }
   };
 
-  // --- UI Operations ---
-
   const loadTemplate = (template: SavedTemplate) => {
     setElements(template.elements);
     setPageSize({ width: template.width, height: template.height, name: 'Custom' });
     setCustomSize({ width: template.width, height: template.height });
+    setLoadedTemplateId(template.id);
+    setTemplateName(template.name);
     showToast(`Loaded "${template.name}"`, 'success');
     setActiveTab('design');
   };
+
+  const handleExportJson = () => {
+    const data = {
+        name: templateName || 'Untitled Design',
+        width: pageSize.width,
+        height: pageSize.height,
+        elements
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${data.name.replace(/\s+/g, '_')}_design.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Design exported to JSON", 'success');
+  };
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const data = JSON.parse(ev.target?.result as string);
+            if(data.elements && data.width && data.height) {
+                setElements(data.elements);
+                setPageSize({ width: data.width, height: data.height, name: 'Custom' });
+                setCustomSize({ width: data.width, height: data.height });
+                setTemplateName(data.name || 'Imported Template');
+                setLoadedTemplateId(null); // Treat as new/unsaved
+                showToast("Design imported successfully", 'success');
+                setActiveTab('design');
+            } else {
+                throw new Error("Invalid template format");
+            }
+        } catch(err) {
+            showToast("Failed to parse JSON file", 'error');
+        }
+        // Reset input
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  // --- Design Element Operations ---
 
   const addText = () => {
     const newEl: DesignElement = {
@@ -254,14 +323,14 @@ export const TemplateDesign: React.FC = () => {
           </button>
         </div>
 
-        <div className="p-4 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
           {activeTab === 'design' && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-2">
-                <button onClick={addText} className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium">
+                <button onClick={addText} className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors">
                   <Type size={16} /> Add Text Block
                 </button>
-                <label className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer">
+                <label className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
                   <ImageIcon size={16} /> Add Image
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false)} />
                 </label>
@@ -271,7 +340,7 @@ export const TemplateDesign: React.FC = () => {
                 <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
                    <div className="flex justify-between items-center">
                        <span className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">Properties</span>
-                       <button onClick={deleteElement} className="text-red-500 bg-red-50 dark:bg-red-900/20 p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30"><Trash2 size={14} /></button>
+                       <button onClick={deleteElement} className="text-red-500 bg-red-50 dark:bg-red-900/20 p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"><Trash2 size={14} /></button>
                    </div>
                    {selectedElement.type === 'text' && (
                       <div className="space-y-4">
@@ -291,9 +360,15 @@ export const TemplateDesign: React.FC = () => {
                           </div>
                           <div>
                               <label className="block text-[10px] text-slate-400 mb-1">Style</label>
-                              <div className="flex border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                              <div className="flex border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900 mb-2">
                                   <button onClick={() => updateElementStyle('fontWeight', selectedElement.style.fontWeight === 'bold' ? 'normal' : 'bold')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.fontWeight === 'bold' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><Bold size={14} className="dark:text-slate-300" /></button>
                                   <button onClick={() => updateElementStyle('fontStyle', selectedElement.style.fontStyle === 'italic' ? 'normal' : 'italic')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.fontStyle === 'italic' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><Italic size={14} className="dark:text-slate-300" /></button>
+                              </div>
+                              <div className="flex border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                                  <button onClick={() => updateElementStyle('textAlign', 'left')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.textAlign === 'left' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><AlignLeft size={14} /></button>
+                                  <button onClick={() => updateElementStyle('textAlign', 'center')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.textAlign === 'center' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><AlignCenter size={14} /></button>
+                                  <button onClick={() => updateElementStyle('textAlign', 'right')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.textAlign === 'right' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><AlignRight size={14} /></button>
+                                  <button onClick={() => updateElementStyle('textAlign', 'justify')} className={clsx("flex-1 py-1.5 flex justify-center hover:bg-slate-200 dark:hover:bg-slate-700", selectedElement.style.textAlign === 'justify' && "bg-slate-300 dark:bg-slate-600 text-slate-900 dark:text-white")}><AlignJustify size={14} /></button>
                               </div>
                           </div>
                       </div>
@@ -307,15 +382,44 @@ export const TemplateDesign: React.FC = () => {
 
           {activeTab === 'list' && (
             <div className="space-y-4">
-              <button onClick={saveTemplate} disabled={isSavingTemplate} className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50">
-                {isSavingTemplate ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Layout to DB
-              </button>
-              <div className="space-y-2 mt-4">
-                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saved Layouts</h3>
-                {savedTemplates.length === 0 ? <p className="text-sm text-slate-400 text-center py-4">No layouts in database.</p> : savedTemplates.map(t => (
-                  <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-lg group">
-                    <div className="overflow-hidden">
-                      <p className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate">{t.name}</p>
+              <div className="space-y-2">
+                  <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Actions</h3>
+                  
+                  {loadedTemplateId ? (
+                      <div className="grid grid-cols-2 gap-2">
+                          <button onClick={() => saveTemplate(false)} disabled={isSavingTemplate} className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-50">
+                             {isSavingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Update
+                          </button>
+                          <button onClick={() => saveTemplate(true)} disabled={isSavingTemplate} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-50">
+                             <Copy size={14} /> Save Copy
+                          </button>
+                      </div>
+                  ) : (
+                      <button onClick={() => saveTemplate(true)} disabled={isSavingTemplate} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+                        {isSavingTemplate ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Layout
+                      </button>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                      <button onClick={handleExportJson} className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors">
+                          <Download size={14} /> Export JSON
+                      </button>
+                      <label className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                          <Upload size={14} /> Import JSON
+                          <input type="file" accept=".json" className="hidden" onChange={handleImportJson} />
+                      </label>
+                  </div>
+              </div>
+
+              <div className="space-y-2 mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Database Templates</h3>
+                    <button onClick={() => { setElements([]); setLoadedTemplateId(null); setTemplateName(''); showToast("Canvas reset", "info"); }} className="text-[10px] text-indigo-500 hover:underline flex items-center gap-1"><RefreshCw size={10}/> New</button>
+                </div>
+                {savedTemplates.length === 0 ? <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">No layouts in database.</p> : savedTemplates.map(t => (
+                  <div key={t.id} className={clsx("flex items-center justify-between p-3 border rounded-lg group transition-colors", loadedTemplateId === t.id ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800" : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600")}>
+                    <div className="overflow-hidden cursor-pointer flex-1" onClick={() => loadTemplate(t)}>
+                      <p className={clsx("font-bold text-sm truncate", loadedTemplateId === t.id ? "text-indigo-700 dark:text-indigo-400" : "text-slate-700 dark:text-slate-300")}>{t.name}</p>
                       <p className="text-[10px] text-slate-400">{t.width}x{t.height} • {t.createdAt}</p>
                     </div>
                     <div className="flex gap-2">
@@ -325,9 +429,8 @@ export const TemplateDesign: React.FC = () => {
                             icon={Settings}
                             variant="ghost"
                             actions={[
-                                { label: 'Edit', onClick: () => loadTemplate(t), icon: Edit, separatorAfter: true },
+                                { label: 'Load', onClick: () => loadTemplate(t), icon: FileUp, separatorAfter: true },
                                 { label: 'Duplicate', onClick: () => showToast("Duplicated (Demo)", "info"), icon: Copy },
-                                { label: 'Share', onClick: () => showToast("Shared (Demo)", "info"), icon: Share2, separatorAfter: true },
                                 { label: 'Delete', onClick: () => deleteTemplate(t.id), icon: Trash2, danger: true }
                             ]}
                         />

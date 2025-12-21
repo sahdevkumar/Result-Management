@@ -29,244 +29,63 @@
       }
       
       /* --- GLOBAL DROPDOWN & INPUT THEME ENGINE --- */
-      
-      /* Base Input/Select Styles */
       select, input, textarea {
         transition: all 0.2s ease-in-out;
       }
 
       /* --------------------------- */
-      /* --- DYNAMIC CUSTOM THEME --- */
-      /* --------------------------- */
-      
-      html.custom-theme body {
-        background-color: var(--bg-background) !important;
-        color: var(--text-main) !important;
-      }
-
-      /* Overriding standard Tailwind utility classes when .custom-theme is active */
-      
-      /* Backgrounds */
-      html.custom-theme .bg-white, 
-      html.custom-theme .dark\:bg-slate-900, 
-      html.custom-theme .bg-slate-50,
-      html.custom-theme .dark\:bg-slate-800 {
-        background-color: var(--bg-surface) !important;
-        color: var(--text-main) !important;
-        border-color: var(--border-color) !important;
-        backdrop-filter: blur(var(--surface-blur, 0px)) !important;
-        -webkit-backdrop-filter: blur(var(--surface-blur, 0px)) !important;
-      }
-
-      html.custom-theme .bg-slate-200\/50,
-      html.custom-theme .dark\:bg-slate-900\/50 {
-         background-color: var(--bg-background) !important;
-      }
-
-      /* Primary Buttons / Accents */
-      html.custom-theme .bg-indigo-600,
-      html.custom-theme .bg-indigo-500,
-      html.custom-theme .bg-indigo-950,
-      html.custom-theme .bg-slate-800 { /* Mapping slate buttons too */
-        background-color: var(--bg-button) !important;
-        color: var(--text-button) !important;
-        border: none !important;
-      }
-
-      html.custom-theme .hover\:bg-indigo-700:hover,
-      html.custom-theme .hover\:bg-indigo-900:hover,
-      html.custom-theme .hover\:bg-black:hover {
-        background-color: var(--bg-button) !important;
-        filter: brightness(0.9);
-      }
-
-      /* Text Accents (Keep to Primary Brand Color) */
-      html.custom-theme .text-indigo-600,
-      html.custom-theme .dark\:text-indigo-400,
-      html.custom-theme .text-indigo-500 {
-        color: var(--color-primary) !important;
-      }
-
-      html.custom-theme .border-indigo-500 {
-        border-color: var(--color-primary) !important;
-      }
-
-      /* Secondary / Muted Elements */
-      html.custom-theme .text-slate-500,
-      html.custom-theme .dark\:text-slate-400,
-      html.custom-theme .text-slate-600 {
-        color: var(--text-secondary) !important;
-      }
-
-      html.custom-theme .border-slate-200,
-      html.custom-theme .dark\:border-slate-700,
-      html.custom-theme .border-slate-300 {
-        border-color: var(--border-color) !important;
-      }
-
-      /* Form Inputs */
-      html.custom-theme input, 
-      html.custom-theme select, 
-      html.custom-theme textarea {
-        background-color: var(--bg-surface) !important;
-        border-color: var(--border-color) !important;
-        color: var(--text-main) !important;
-      }
-      
-      html.custom-theme input:focus,
-      html.custom-theme select:focus,
-      html.custom-theme textarea:focus {
-        border-color: var(--color-primary) !important;
-        box-shadow: 0 0 0 2px var(--color-primary) !important;
-      }
-
-      /* Sidebar Specifics */
-      html.custom-theme .w-72.fixed {
-         background-color: var(--bg-surface) !important;
-         border-right: 1px solid var(--border-color) !important;
-         backdrop-filter: blur(var(--surface-blur, 0px)) !important;
-      }
-      
-      /* Active Navigation Item */
-      html.custom-theme .group.bg-indigo-950,
-      html.custom-theme .group.text-white {
-         background-color: var(--color-primary) !important;
-         color: white !important;
-      }
-
-
-      /* --------------------------- */
-      /* --- PRESET THEMES --- */
+      /* --- QUANTUM THEME ENGINE --- */
       /* --------------------------- */
 
-      /* 1. NEO THEME (Cyberpunk/Matrix) */
-      html.neo body {
-        background-color: #000000;
-        color: #22c55e;
-        font-family: 'Courier New', Courier, monospace;
-      }
-      html.neo .bg-white, html.neo .dark\:bg-slate-900, html.neo .dark\:bg-slate-800 {
-        background-color: #0a0a0a !important;
-        border: 1px solid #15803d !important;
-        color: #22c55e !important;
-        box-shadow: 0 0 5px rgba(34, 197, 94, 0.2);
-      }
-      html.neo input, html.neo select, html.neo textarea {
-        background-color: #051a0d !important;
-        border-color: #15803d !important;
-        color: #4ade80 !important;
-        border-radius: 0 !important;
-      }
-      html.neo input:focus, html.neo select:focus, html.neo textarea:focus {
-        box-shadow: 0 0 10px rgba(34, 197, 94, 0.5) !important;
-        border-color: #22c55e !important;
-      }
-      html.neo button {
-        border-radius: 0 !important;
-        letter-spacing: 1px;
-      }
-      html.neo .text-slate-500, html.neo .text-slate-400 {
-        color: #166534 !important;
-      }
-
-      /* 2. QUANTUM THEME (Sci-Fi/Futuristic) */
+      /* Quantum Light (Default/White/Cyan) */
       html.quantum body {
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
+      /* Light overrides for specific elements */
+      html.quantum .text-cyan-400 { color: #0891b2 !important; }
+      html.quantum .text-cyan-300 { color: #06b6d4 !important; }
+      html.quantum .border-cyan-900\/50 { border-color: #cffafe !important; }
+      html.quantum .bg-cyan-950\/30 { background-color: #ecfeff !important; }
+      
+      /* Quantum Dark (Neon/Black/Cyan) */
+      html.quantum.dark body {
         background-color: #020617;
         color: #22d3ee;
       }
-      html.quantum .bg-white, html.quantum .dark\:bg-slate-900, html.quantum .dark\:bg-slate-800 {
+      
+      /* Global Glass Override for Dark Mode Cards/Containers */
+      /* We exclude .print-content and .iso-bg to allow specific elements to retain their white/native background */
+      html.quantum.dark .bg-white:not(.print-content):not(.iso-bg), 
+      html.quantum.dark .dark\:bg-slate-900:not(.print-content):not(.iso-bg), 
+      html.quantum.dark .dark\:bg-slate-800:not(.print-content):not(.iso-bg) {
         background-color: rgba(8, 51, 68, 0.3) !important;
         border: 1px solid #0e7490 !important;
         color: #67e8f9 !important;
         backdrop-filter: blur(5px);
       }
-      html.quantum input, html.quantum select, html.quantum textarea {
+
+      /* Input/Select Override */
+      html.quantum.dark input:not(.print-content), 
+      html.quantum.dark select:not(.print-content), 
+      html.quantum.dark textarea:not(.print-content) {
         background-color: rgba(6, 182, 212, 0.05) !important;
         border-color: #0891b2 !important;
         color: #a5f3fc !important;
       }
-      html.quantum .text-slate-800, html.quantum .text-slate-900 {
+
+      /* Text Overrides for High Contrast in Neon Mode */
+      html.quantum.dark .text-slate-800:not(.print-content), 
+      html.quantum.dark .text-slate-900:not(.print-content) {
         color: #cffafe !important;
       }
-
-      /* 3. BRUTALISM THEME (Bold/Stark) */
-      html.brutalism body {
-        background-color: #fffdf5;
-      }
-      html.brutalism * {
-        border-radius: 0 !important;
-      }
-      html.brutalism .bg-white, html.brutalism .dark\:bg-slate-900 {
-        background-color: #ffffff !important;
-        border: 3px solid #000000 !important;
-        box-shadow: 6px 6px 0px 0px #000000 !important;
-        color: #000000 !important;
-      }
-      html.brutalism input, html.brutalism select, html.brutalism textarea {
-        background-color: #ffffff !important;
-        border: 3px solid #000000 !important;
-        color: #000000 !important;
-        font-weight: bold;
-        box-shadow: 4px 4px 0px 0px #000000 !important;
-      }
-      html.brutalism button {
-        border: 3px solid #000000 !important;
-        box-shadow: 4px 4px 0px 0px #000000 !important;
-        font-weight: 900 !important;
-        text-transform: uppercase;
-      }
-      html.brutalism button:active {
-        box-shadow: none !important;
-        transform: translate(4px, 4px) !important;
+      html.quantum.dark .text-slate-500:not(.print-content),
+      html.quantum.dark .text-slate-600:not(.print-content) {
+        color: #22d3ee !important;
+        opacity: 0.7;
       }
 
-      /* 4. GLASSMORPHISM (Frosted Glass) */
-      html.glassmorphism .bg-white, html.glassmorphism .dark\:bg-slate-900, html.glassmorphism .dark\:bg-slate-800 {
-        background: rgba(255, 255, 255, 0.25) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
-      }
-      html.glassmorphism.dark .bg-white, html.glassmorphism.dark .dark\:bg-slate-900, html.glassmorphism.dark .dark\:bg-slate-800 {
-        background: rgba(0, 0, 0, 0.3) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-      }
-      html.glassmorphism input, html.glassmorphism select, html.glassmorphism textarea {
-        background: rgba(255, 255, 255, 0.1) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-      }
-
-      /* 5. NEUMORPHISM (Soft UI) */
-      html.neumorphism body {
-        background-color: #E0E5EC;
-      }
-      html.neumorphism.dark body {
-        background-color: #2A2A2A;
-      }
-      html.neumorphism .bg-white, html.neumorphism .dark\:bg-slate-900 {
-        background: #E0E5EC !important;
-        box-shadow: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5) !important;
-        border-radius: 20px !important;
-        border: none !important;
-      }
-      html.neumorphism.dark .bg-white, html.neumorphism.dark .dark\:bg-slate-900 {
-        background: #2A2A2A !important;
-        box-shadow: 5px 5px 10px #1a1a1a, -5px -5px 10px #3a3a3a !important;
-        color: #e0e0e0 !important;
-      }
-      html.neumorphism input, html.neumorphism select {
-        background: #E0E5EC !important;
-        box-shadow: inset 6px 6px 12px #b8b9be, inset -6px -6px 12px #ffffff !important;
-        border: none !important;
-      }
-      html.neumorphism.dark input, html.neumorphism.dark select {
-        background: #2A2A2A !important;
-        box-shadow: inset 5px 5px 10px #1a1a1a, inset -5px -5px 10px #3a3a3a !important;
-        color: white !important;
-      }
-
-      /* --- Common Option Styles --- */
+      /* Dropdown Options - Always dark in dark mode */
       select option {
         background-color: #ffffff;
         color: #1e293b;
@@ -276,18 +95,65 @@
         background-color: #0f172a;
         color: #f1f5f9;
       }
-      html.neo select option {
-        background-color: #000000 !important;
-        color: #22c55e !important;
-      }
-      html.quantum select option {
+      html.quantum.dark select option {
         background-color: #020617 !important;
         color: #22d3ee !important;
       }
-      html.brutalism select option {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        font-weight: 900 !important;
+
+      /* --- CUSTOM SCROLLBAR (QUANTUM THEME) --- */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1; /* slate-300 */
+        border-radius: 20px;
+        border: 3px solid transparent;
+        background-clip: content-box;
+        transition: background-color 0.2s;
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: #94a3b8; /* slate-400 */
+      }
+
+      /* Dark Mode Scrollbar */
+      html.dark ::-webkit-scrollbar-thumb {
+        background-color: #334155; /* slate-700 */
+      }
+      
+      html.dark ::-webkit-scrollbar-thumb:hover {
+        background-color: #06b6d4; /* cyan-500 - Quantum Glow */
+      }
+      
+      html.dark ::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+
+      /* --- UTILITIES --- */
+      .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+
+      /* --- ISOLATED & PRINT CONTENT --- */
+      /* Forces elements to behave like paper/standard components even in Quantum Dark mode */
+      .print-content, .iso-bg {
+          background-color: #ffffff !important;
+          color: #000000 !important;
+          border-color: #e2e8f0 !important;
+          box-shadow: none !important;
+      }
+      .print-content * {
+          color: inherit; /* Reset text colors inside print content to black/inherit */
       }
 
       /* --- PRINT STYLES --- */
@@ -313,6 +179,8 @@
             box-shadow: none !important; 
             text-shadow: none !important;
         }
+        /* Hide scrollbars in print */
+        ::-webkit-scrollbar { display: none; }
       }
     </style>
 <script type="importmap">
