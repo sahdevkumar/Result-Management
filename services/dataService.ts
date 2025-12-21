@@ -1,9 +1,9 @@
 
+// ... existing imports ...
 import { supabase } from "../lib/supabase";
 import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType, SavedTemplate, TeacherRemark, NonAcademicRecord, UserProfile, ActivityLog, CustomTheme } from "../types";
 
-// --- Helpers for Data Mapping ---
-
+// ... existing mapping functions ...
 const mapStudent = (s: any): Student => ({
   id: s.id,
   fullName: s.full_name,
@@ -115,6 +115,12 @@ export const DataService = {
           console.error("Profile Fetch Error:", pError);
           throw new Error("Login successful, but user profile could not be loaded. Please contact admin.");
         }
+
+        // Check if user is locked
+        if (profile.status === 'Locked') {
+            await supabase.auth.signOut();
+            throw new Error("Your account is pending approval or locked. Please contact the administrator.");
+        }
         
         // Update last login
         await supabase.from('system_users').update({ last_login_at: new Date().toISOString() }).eq('id', data.user.id);
@@ -147,7 +153,7 @@ export const DataService = {
     if (authError) throw new Error(authError.message);
     if (!authData.user) throw new Error("Authentication record could not be created.");
 
-    // Create profile
+    // Create profile - Default to Locked status
     const { error: dbError } = await supabase.from('system_users').insert({
         id: authData.user.id, 
         full_name: user.name,
@@ -157,7 +163,7 @@ export const DataService = {
         password: user.password, 
         assigned_subject_id: user.subjectId || null,
         staff_post: user.staffPost || null,
-        status: 'Active'
+        status: 'Locked'
     });
     
     if (dbError) throw new Error(dbError.message);
@@ -194,6 +200,12 @@ export const DataService = {
           
         if (!profile) return null;
 
+        // If locked, sign them out immediately
+        if (profile.status === 'Locked') {
+            await supabase.auth.signOut();
+            return null;
+        }
+
         return {
           id: profile.id,
           fullName: profile.full_name,
@@ -207,10 +219,11 @@ export const DataService = {
     }
   },
 
-  // --- Theme Settings ---
+  // ... (rest of the file unchanged) ...
+  // Theme Settings
   
   getThemePreference: async (userId: string) => {
-    if (userId === 'demo-admin-id') return null; // Demo user doesn't use DB for this
+    if (userId === 'demo-admin-id') return null; 
     const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
     if (data) {
         return { theme: data.theme, darkMode: data.dark_mode };
@@ -230,7 +243,7 @@ export const DataService = {
     if (error) console.error("Failed to save theme settings:", error);
   },
 
-  // --- Custom Themes Management ---
+  // Custom Themes Management
 
   getCustomThemes: async (): Promise<CustomTheme[]> => {
     const { data, error } = await supabase.from('custom_themes').select('*');
@@ -257,11 +270,9 @@ export const DataService = {
     };
 
     if (theme.id) {
-        // Update existing
         const { error } = await supabase.from('custom_themes').update(payload).eq('id', theme.id);
         if (error) throw new Error(error.message);
     } else {
-        // Create new
         const { error } = await supabase.from('custom_themes').insert(payload);
         if (error) throw new Error(error.message);
     }
@@ -272,7 +283,7 @@ export const DataService = {
     if (error) throw new Error(error.message);
   },
 
-  // --- Connection & Core ---
+  // Connection & Core
   checkConnection: async (): Promise<boolean> => {
     try {
       const { status } = await supabase.from('students').select('id', { count: 'exact', head: true });

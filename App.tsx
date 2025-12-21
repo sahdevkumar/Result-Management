@@ -195,8 +195,8 @@ const App: React.FC = () => {
     // 1. Initial Session Check with Timeout
     const checkAuth = async () => {
         try {
-            // Force a timeout after 3 seconds to avoid stuck loading screens if Supabase hangs
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Check Timeout')), 3000));
+            // Force a timeout after 10 seconds to avoid stuck loading screens if Supabase hangs
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth Check Timeout')), 10000));
             
             // Race the actual check against the timeout
             const currentUser = await Promise.race([

@@ -1,4 +1,5 @@
 
+// ... existing imports ...
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, Database, User, UserPlus, BookOpen, ChevronDown, Briefcase, KeyRound, ArrowLeft } from 'lucide-react';
 import { DataService } from '../services/dataService';
@@ -52,7 +53,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     subjectId: role === 'Teacher' ? selectedSubjectId : undefined,
                     staffPost: role === 'Office Staff' ? staffPost : undefined
                 });
-                showToast("Account created! You can now sign in.", "success");
+                showToast("Account created! Please wait for admin approval.", "success");
                 setMode('login');
             }
         } catch (err: any) {
@@ -63,6 +64,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         }
     };
 
+    // ... (rest of the file unchanged) ...
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);

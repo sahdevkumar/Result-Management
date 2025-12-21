@@ -9,12 +9,13 @@ import { DataService } from '../services/dataService';
 import { Student, Exam, SchoolClass, Subject, SavedTemplate, DesignElement } from '../types';
 import clsx from 'clsx';
 
+// ... existing component logic ...
 type PrintTab = 'single' | 'bulk';
 type PaperSize = 'A4' | 'Letter';
 type Orientation = 'portrait' | 'landscape';
 
 export const PrintReport: React.FC = () => {
-  // ... (existing logic unchanged) ...
+  // ... (existing state) ...
   const [activeTab, setActiveTab] = useState<PrintTab>('single');
   const { showToast } = useToast();
   
@@ -47,7 +48,7 @@ export const PrintReport: React.FC = () => {
   const [previewElements, setPreviewElements] = useState<DesignElement[]>([]);
   const [previewSize, setPreviewSize] = useState({ width: 794, height: 1123 });
 
-  // --- Initial Data Load ---
+  // ... (existing effects and handlers unchanged) ...
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -78,7 +79,6 @@ export const PrintReport: React.FC = () => {
     load();
   }, []);
 
-  // --- Filtering & Selection ---
   useEffect(() => {
     if (classId) {
       const selectedClass = classes.find(c => c.id === classId);
@@ -92,7 +92,6 @@ export const PrintReport: React.FC = () => {
         } else {
             setStudentId('');
         }
-        // Auto select all for bulk
         setSelectedStudentIds(new Set(filtered.map(s => s.id)));
       }
     } else {
@@ -101,7 +100,6 @@ export const PrintReport: React.FC = () => {
     }
   }, [classId, students, classes, activeTab]);
 
-  // Dimension Helper
   const getPageDimensions = () => {
     let w = 794; // A4 approx px at 96dpi
     let h = 1123;
@@ -141,7 +139,6 @@ export const PrintReport: React.FC = () => {
     setPreviewElements(mappedElements);
   };
 
-  // --- Live Preview for Single Print ---
   useEffect(() => {
     if (activeTab === 'single' && templateId && examId && studentId) {
         generatePreview();
@@ -171,7 +168,6 @@ export const PrintReport: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Dynamic Print Styles */}
       <style>
         {`
           @media print {
@@ -183,7 +179,6 @@ export const PrintReport: React.FC = () => {
         `}
       </style>
 
-      {/* ... (Header and Sidebar unchanged) ... */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Print Center</h1>
@@ -212,7 +207,7 @@ export const PrintReport: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 no-print">
-        {/* Configuration Sidebar */}
+        {/* Sidebar */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-5">
             <div>
@@ -343,7 +338,7 @@ export const PrintReport: React.FC = () => {
                       <FileText size={14} /> Live Print Preview ({orientation === 'portrait' ? 'Portrait' : 'Landscape'})
                   </div>
                   <div 
-                    className="bg-white iso-bg shadow-2xl relative overflow-hidden border border-slate-200 shrink-0"
+                    className="shadow-2xl relative shrink-0 border border-slate-200"
                     style={{ 
                         width: `${previewSize.width}px`, 
                         height: `${previewSize.height}px`,
@@ -352,42 +347,44 @@ export const PrintReport: React.FC = () => {
                         marginBottom: `-${previewSize.height * (orientation === 'portrait' ? 0.35 : 0.45)}px`
                     }}
                   >
-                    {previewElements.map(el => (
-                        <div
-                            key={el.id} 
-                            className="absolute"
-                            style={{ 
-                                left: el.x, 
-                                top: el.y, 
-                                width: el.width, 
-                                height: el.height, 
-                                opacity: el.style.opacity,
-                                zIndex: el.type === 'watermark' ? 0 : 10
-                            }}
-                        >
-                            {el.type === 'text' ? (
-                                <div style={{ 
-                                    fontSize: `${el.style.fontSize}px`, 
-                                    fontFamily: el.style.fontFamily, 
-                                    color: el.style.color, 
-                                    fontWeight: el.style.fontWeight, 
-                                    fontStyle: el.style.fontStyle, 
-                                    textDecoration: el.style.textDecoration, 
-                                    textAlign: el.style.textAlign as any, 
-                                    lineHeight: el.style.lineHeight, 
-                                    letterSpacing: `${el.style.letterSpacing}px`, 
-                                    whiteSpace: 'pre-wrap', 
-                                    wordBreak: 'break-word', 
-                                    width: '100%', 
-                                    height: '100%' 
-                                }}>
-                                    {el.content}
-                                </div>
-                            ) : ( 
-                                <img src={el.content} alt="preview element" className="w-full h-full object-contain" /> 
-                            )}
-                        </div>
-                    ))}
+                    <div className="w-full h-full bg-white iso-bg overflow-hidden relative">
+                        {previewElements.map(el => (
+                            <div
+                                key={el.id} 
+                                className="absolute"
+                                style={{ 
+                                    left: el.x, 
+                                    top: el.y, 
+                                    width: el.width, 
+                                    height: el.height, 
+                                    opacity: el.style.opacity,
+                                    zIndex: el.type === 'watermark' ? 0 : 10
+                                }}
+                            >
+                                {el.type === 'text' ? (
+                                    <div style={{ 
+                                        fontSize: `${el.style.fontSize}px`, 
+                                        fontFamily: el.style.fontFamily, 
+                                        color: el.style.color, 
+                                        fontWeight: el.style.fontWeight, 
+                                        fontStyle: el.style.fontStyle, 
+                                        textDecoration: el.style.textDecoration, 
+                                        textAlign: el.style.textAlign as any, 
+                                        lineHeight: el.style.lineHeight, 
+                                        letterSpacing: `${el.style.letterSpacing}px`, 
+                                        whiteSpace: 'pre-wrap', 
+                                        wordBreak: 'break-word', 
+                                        width: '100%', 
+                                        height: '100%' 
+                                    }}>
+                                        {el.content}
+                                    </div>
+                                ) : ( 
+                                    <img src={el.content} alt="preview element" className="w-full h-full object-contain" /> 
+                                )}
+                            </div>
+                        ))}
+                    </div>
                   </div>
               </div>
           )}
@@ -400,7 +397,6 @@ export const PrintReport: React.FC = () => {
         </div>
       </div>
 
-      {/* Hidden Print Section - Optimized for Browser Printing */}
       <div className="hidden print:block">
           {activeTab === 'single' && (
               <div 
