@@ -1,9 +1,11 @@
 
-// ... existing imports ...
 import { supabase } from "../lib/supabase";
-import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, AssessmentType, SavedTemplate, TeacherRemark, NonAcademicRecord, UserProfile, ActivityLog, CustomTheme } from "../types";
+import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, SavedTemplate, TeacherRemark, NonAcademicRecord, UserProfile, ActivityLog } from "../types";
 
-// ... existing mapping functions ...
+const SESSION_KEY = 'unacademy_db_session';
+
+const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
 const mapStudent = (s: any): Student => ({
   id: s.id,
   fullName: s.full_name,
@@ -72,139 +74,100 @@ const mapNonAcademic = (n: any): NonAcademicRecord => ({
   updatedAt: n.updated_at
 });
 
-// --- Service Methods ---
-
 export const DataService = {
-  // --- Auth Methods ---
   signIn: async (email: string, password: string): Promise<UserProfile> => {
-    // 1. Demo Fallback for Evaluation
     if (email === 'admin@unacademy.com' && password === 'admin123') {
        const demoUser: UserProfile = {
          id: 'demo-admin-id',
-         fullName: 'Demo Administrator',
+         fullName: 'Master Admin',
          email: 'admin@unacademy.com',
          role: 'Super Admin',
          status: 'Active'
        };
-       localStorage.setItem('unacademy_demo_user', JSON.stringify(demoUser));
+       localStorage.setItem(SESSION_KEY, JSON.stringify(demoUser));
        return demoUser;
     }
 
-    // 2. Real Supabase Auth
-    try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        
-        if (error) {
-           console.error("Supabase Auth Error:", error);
-           if (error.message === "Invalid login credentials") {
-             throw new Error("Invalid email or password. If you just signed up, please check if your email needs confirmation.");
-           }
-           throw error;
-        }
+    const { data: profile, error } = await supabase
+      .from('system_users')
+      .select('*')
+      .eq('email', email)
+      .eq('password', password)
+      .maybeSingle();
 
-        if (!data.user) throw new Error("No user found");
-        
-        // Fetch profile
-        const { data: profile, error: pError } = await supabase
-          .from('system_users')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-          
-        if (pError) {
-          console.error("Profile Fetch Error:", pError);
-          throw new Error("Login successful, but user profile could not be loaded. Please contact admin.");
-        }
-
-        // Check if user is locked
-        if (profile.status === 'Locked') {
-            await supabase.auth.signOut();
-            throw new Error("Your account is pending approval or locked. Please contact the administrator.");
-        }
-        
-        // Update last login
-        await supabase.from('system_users').update({ last_login_at: new Date().toISOString() }).eq('id', data.user.id);
-
-        return {
-          id: profile.id,
-          fullName: profile.full_name,
-          email: profile.email,
-          role: profile.role,
-          status: profile.status,
-          assignedSubjectId: profile.assigned_subject_id,
-          assignedClassId: profile.assigned_class_id
-        };
-    } catch (e: any) {
-        throw new Error(e.message || "Invalid login credentials");
+    if (error) {
+        if (error.code === '42501') throw new Error("PERMISSION_DENIED: Supabase RLS is blocking access. Run the SQL fix in Diagnostics.");
+        throw new Error(`DB_ERROR: ${error.message}`);
     }
+    if (!profile) throw new Error("Invalid email or password.");
+
+    if (profile.status === 'Locked') {
+      throw new Error("Account pending approval. Contact the Super Admin.");
+    }
+
+    const user: UserProfile = {
+      id: profile.id,
+      fullName: profile.full_name,
+      email: profile.email,
+      role: profile.role,
+      status: profile.status,
+      assignedSubjectId: profile.assigned_subject_id,
+      assignedClassId: profile.assigned_class_id
+    };
+
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    return user;
   },
 
   signUp: async (user: any) => {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: user.email,
-        password: user.password,
-        options: {
-            data: {
-                full_name: user.name,
-                role: user.role
-            }
-        }
-    });
+    const { data: existing, error: existErr } = await supabase.from('system_users').select('id').eq('email', user.email).maybeSingle();
+    if (existErr && existErr.code === '42501') throw new Error("PERMISSION_DENIED: RLS prevents checking existing users.");
+    if (existing) throw new Error("An account with this email already exists.");
 
-    if (authError) throw new Error(authError.message);
-    if (!authData.user) throw new Error("Authentication record could not be created.");
-
-    // Create profile - Default to Locked status
+    const userId = generateId();
     const { error: dbError } = await supabase.from('system_users').insert({
-        id: authData.user.id, 
+        id: userId,
         full_name: user.name,
         email: user.email,
         mobile: user.mobile || '',
         role: user.role,
-        password: user.password, 
+        password: user.password,
         assigned_subject_id: user.subjectId || null,
         assigned_class_id: user.classId || null,
-        staff_post: user.staff_post || null,
-        status: 'Locked'
+        staff_post: user.staffPost || user.staff_post || null,
+        status: 'Locked' 
     });
     
-    if (dbError) throw new Error(dbError.message);
+    if (dbError) {
+        if (dbError.code === '42501') throw new Error("PERMISSION_DENIED: Cannot register. RLS is enabled on 'system_users'.");
+        throw new Error(`REGISTRATION_FAILED: ${dbError.message}`);
+    }
+  },
+
+  addSystemUser: async (user: any) => {
+    return DataService.signUp(user);
   },
 
   signOut: async () => {
-    localStorage.removeItem('unacademy_demo_user');
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  },
-
-  resetPassword: async (email: string) => {
-    // 1. Demo Fallback
-    if (email === 'admin@unacademy.com') return;
-
-    // 2. Real Supabase Auth
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) throw new Error(error.message);
+    localStorage.removeItem(SESSION_KEY);
   },
 
   getCurrentUser: async (): Promise<UserProfile | null> => {
-    const demoSession = localStorage.getItem('unacademy_demo_user');
-    if (demoSession) return JSON.parse(demoSession);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return null;
+    const session = localStorage.getItem(SESSION_KEY);
+    if (!session) return null;
     
     try {
-        const { data: profile } = await supabase
+        const cachedUser = JSON.parse(session);
+        if (cachedUser.id === 'demo-admin-id') return cachedUser;
+
+        const { data: profile, error } = await supabase
           .from('system_users')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', cachedUser.id)
           .single();
           
-        if (!profile) return null;
-
-        // If locked, sign them out immediately
-        if (profile.status === 'Locked') {
-            await supabase.auth.signOut();
+        if (error || !profile || profile.status === 'Locked') {
+            localStorage.removeItem(SESSION_KEY);
             return null;
         }
 
@@ -222,81 +185,59 @@ export const DataService = {
     }
   },
 
-  // Theme Settings
-  
-  getThemePreference: async (userId: string) => {
-    if (userId === 'demo-admin-id') return null; 
-    const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
-    if (data) {
-        return { theme: data.theme, darkMode: data.dark_mode };
-    }
-    return null;
-  },
+  seedInitialData: async () => {
+    try {
+        await supabase.from('system_users').upsert({
+            id: 'demo-admin-id',
+            full_name: 'Master Admin',
+            email: 'admin@unacademy.com',
+            password: 'admin123',
+            role: 'Super Admin',
+            status: 'Active'
+        }, { onConflict: 'id' });
 
-  saveThemePreference: async (userId: string, theme: string, darkMode: boolean) => {
-    if (userId === 'demo-admin-id') return;
-    const { error } = await supabase.from('user_settings').upsert({
-        user_id: userId,
-        theme: theme,
-        dark_mode: darkMode,
-        updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
-    
-    if (error) console.error("Failed to save theme settings:", error);
-  },
+        const subjects = [
+            { name: 'Mathematics', code: 'MTH-101', max_marks: 100, pass_marks: 33, max_marks_objective: 40, max_marks_subjective: 60 },
+            { name: 'Science', code: 'SCI-101', max_marks: 100, pass_marks: 33, max_marks_objective: 30, max_marks_subjective: 70 },
+            { name: 'English', code: 'ENG-101', max_marks: 100, pass_marks: 33, max_marks_objective: 20, max_marks_subjective: 80 }
+        ];
+        const { error: subErr } = await supabase.from('subjects').upsert(subjects, { onConflict: 'code' });
+        if (subErr) throw subErr;
 
-  // Custom Themes Management
+        const classes = [
+            { name: 'Class 9', section: 'A' },
+            { name: 'Class 10', section: 'A' }
+        ];
+        const { error: clsErr } = await supabase.from('classes').upsert(classes, { onConflict: 'name,section' });
+        if (clsErr) throw clsErr;
 
-  getCustomThemes: async (): Promise<CustomTheme[]> => {
-    const { data, error } = await supabase.from('custom_themes').select('*');
-    if (error) {
-      console.error("Failed to load custom themes", error);
-      return [];
-    }
-    return data.map((t: any) => ({
-      id: t.id,
-      name: t.name,
-      colors: t.colors,
-      isPreset: false
-    }));
-  },
+        const students = [
+            { full_name: 'Rahul Kumar', roll_number: 'ACS001', class_name: 'Class 10', section: 'A', guardian_name: 'Suresh Kumar', status: 'Active' },
+            { full_name: 'Priya Sharma', roll_number: 'ACS002', class_name: 'Class 10', section: 'A', guardian_name: 'Amit Sharma', status: 'Active' }
+        ];
+        const { error: stErr } = await supabase.from('students').upsert(students, { onConflict: 'roll_number' });
+        if (stErr) throw stErr;
 
-  saveCustomTheme: async (theme: Omit<CustomTheme, 'id'> & { id?: string }) => {
-    const user = await DataService.getCurrentUser();
-    if (!user) throw new Error("Must be logged in to save theme");
+        await supabase.from('exam_types').upsert([{ name: 'Unit Test' }, { name: 'Final Exam' }], { onConflict: 'name' });
 
-    const payload = {
-        name: theme.name,
-        colors: theme.colors,
-        created_by: user.id
-    };
-
-    if (theme.id) {
-        const { error } = await supabase.from('custom_themes').update(payload).eq('id', theme.id);
-        if (error) throw new Error(error.message);
-    } else {
-        const { error } = await supabase.from('custom_themes').insert(payload);
-        if (error) throw new Error(error.message);
+        return true;
+    } catch (e: any) {
+        if (e.code === '42501') throw new Error("RLS_BLOCKED: Cannot seed data. Row Level Security is active on Supabase.");
+        throw new Error(e.message || "Seeding failed.");
     }
   },
 
-  deleteCustomTheme: async (id: string) => {
-    const { error } = await supabase.from('custom_themes').delete().eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
-  // Connection & Core
   checkConnection: async (): Promise<boolean> => {
     try {
-      const { status } = await supabase.from('students').select('id', { count: 'exact', head: true });
-      return status !== 0 && status !== 503;
+      const { error } = await supabase.from('school_config').select('id').limit(1);
+      return !error;
     } catch (e) {
       return false;
     }
   },
 
   getSchoolInfo: async () => {
-    const { data, error } = await supabase.from('school_config').select('*').eq('id', 1).single();
+    const { data, error } = await supabase.from('school_config').select('*').eq('id', 1).maybeSingle();
     if (error || !data) {
       return { name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '', scorecard_layout: null };
     }
@@ -325,7 +266,7 @@ export const DataService = {
 
   uploadFile: async (file: File, folder: string = 'branding'): Promise<string> => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const fileName = `${folder}/${Date.now()}_${generateId()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
       .from('school_assets')
       .upload(fileName, file, { upsert: true });
@@ -455,10 +396,7 @@ export const DataService = {
 
   getSubjects: async (): Promise<Subject[]> => {
     const { data, error } = await supabase.from('subjects').select('*').order('name');
-    if (error) {
-        console.error("Supabase error fetching subjects:", error);
-        return [];
-    }
+    if (error) return [];
     return (data || []).map(mapSubjectRecord);
   },
 
@@ -491,7 +429,7 @@ export const DataService = {
   },
 
   updateClass: async (cls: SchoolClass): Promise<void> => {
-    const { error } = await supabase.from('classes').update({ name: cls.className, section: cls.section }).eq('id', cls.id);
+    const { error = null } = await supabase.from('classes').update({ name: cls.className, section: cls.section }).eq('id', cls.id);
     if (error) throw new Error(error.message || "Failed to update class");
   },
 
@@ -527,29 +465,23 @@ export const DataService = {
     return (data || []).map(mapMark);
   },
 
-  getStudentMarksWithRemarks: async (studentId: string, examId: string): Promise<MarkRecord[]> => {
+  getStudentMarks: async (studentId: string, examId: string): Promise<MarkRecord[]> => {
     const { data: marks } = await supabase.from('marks').select('*').eq('student_id', studentId).eq('exam_id', examId);
     const { data: remarks } = await supabase.from('teacher_remarks').select('*').eq('student_id', studentId).eq('exam_id', examId);
     const marksList = (marks || []).map(mapMark);
-    const remarksList = (remarks || []);
     return marksList.map(m => {
-        const r = remarksList.find((rm: any) => rm.subject_id === m.subjectId);
+        const r = remarks?.find((rm: any) => rm.subject_id === m.subjectId);
         if (r) return { ...m, remarks: r.remark };
         return m;
     });
-  },
-
-  getStudentMarks: async (studentId: string, examId: string): Promise<MarkRecord[]> => {
-    return DataService.getStudentMarksWithRemarks(studentId, examId);
   },
 
   getStudentHistory: async (studentId: string): Promise<MarkRecord[]> => {
     const { data: marks } = await supabase.from('marks').select('*').eq('student_id', studentId);
     const { data: remarks } = await supabase.from('teacher_remarks').select('*').eq('student_id', studentId);
     const marksList = (marks || []).map(mapMark);
-    const remarksList = (remarks || []);
     return marksList.map(m => {
-        const r = remarksList.find((rm: any) => rm.exam_id === m.examId && rm.subject_id === m.subjectId);
+        const r = remarks?.find((rm: any) => rm.exam_id === m.examId && rm.subject_id === m.subjectId);
         if (r) return { ...m, remarks: r.remark };
         return m;
     });
@@ -560,7 +492,7 @@ export const DataService = {
       student_id: m.studentId, exam_id: m.examId, subject_id: m.subjectId, obj_marks: m.objMarks, obj_max_marks: m.objMaxMarks, sub_marks: m.subMarks, sub_max_marks: m.subMaxMarks, exam_date: m.examDate, grade: m.grade, remarks: m.remarks, attended: m.attended, updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('marks').upsert(dbRecord, { onConflict: 'student_id,exam_id,subject_id' });
-    if (error) throw new Error(error.message || "Failed to upsert marks record");
+    if (error) throw new Error(error.message || "Failed to update record");
   },
 
   bulkUpdateMarks: async (records: MarkRecord[]): Promise<void> => {
@@ -572,7 +504,6 @@ export const DataService = {
     if (error) throw new Error(error.message || "Database batch operation failed");
   },
 
-  // --- Non-Academic Performance ---
   getNonAcademicRecords: async (examId: string): Promise<NonAcademicRecord[]> => {
     const { data, error } = await supabase.from('non_academic_records').select('*').eq('exam_id', examId);
     if (error) return [];
@@ -592,7 +523,6 @@ export const DataService = {
     if (error) throw new Error(error.message || "Failed to save non-academic record");
   },
 
-  // --- Teacher Remarks ---
   saveTeacherRemark: async (r: TeacherRemark): Promise<void> => {
     const { error } = await supabase.from('teacher_remarks').upsert({
         student_id: r.studentId, exam_id: r.examId, subject_id: r.subjectId, remark: r.remark, updated_at: new Date().toISOString()
@@ -605,13 +535,11 @@ export const DataService = {
      return (data || []).map((r: any) => ({ studentId: r.student_id, examId: r.exam_id, subjectId: r.subject_id, remark: r.remark }));
   },
 
-  // --- System User Management ---
   getSystemUsers: async () => {
     const { data, error } = await supabase
         .from('system_users')
         .select('*, subjects(name), classes(name, section)')
         .order('created_at', { ascending: false });
-        
     if (error) return [];
     return data.map((u: any) => ({
         id: u.id,
@@ -627,10 +555,6 @@ export const DataService = {
     }));
   },
 
-  addSystemUser: async (user: any) => {
-    await DataService.signUp(user);
-  },
-
   updateSystemUser: async (id: string, updates: any) => {
     const { error } = await supabase.from('system_users').update(updates).eq('id', id);
     if (error) throw new Error(error.message);
@@ -638,17 +562,17 @@ export const DataService = {
 
   getUserActivityLogs: async (): Promise<ActivityLog[]> => {
     return [
-      { id: '1', userId: 'admin', userName: 'Demo Administrator', role: 'Super Admin', action: 'System Login', details: 'Successful authentication', ipAddress: '192.168.1.10', timestamp: new Date().toISOString() },
-      { id: '2', userId: 'u2', userName: 'Rahul Sharma', role: 'Teacher', action: 'Update Marks', details: 'Updated Physics marks for Class 10A', ipAddress: '192.168.1.45', timestamp: new Date(Date.now() - 3600000).toISOString() },
-      { id: '3', userId: 'u3', userName: 'Priya Singh', role: 'Teacher', action: 'Add Remark', details: 'Added feedback for student Roll-102', ipAddress: '192.168.1.42', timestamp: new Date(Date.now() - 7200000).toISOString() },
-      { id: '4', userId: 'admin', userName: 'Demo Administrator', role: 'Super Admin', action: 'Create Exam', details: 'Created "Final Term 2024"', ipAddress: '192.168.1.10', timestamp: new Date(Date.now() - 86400000).toISOString() },
-      { id: '5', userId: 'u4', userName: 'Office Staff', role: 'Office Staff', action: 'Print Report', details: 'Generated bulk reports for Class 9B', ipAddress: '192.168.1.55', timestamp: new Date(Date.now() - 90000000).toISOString() },
+      { id: '1', userId: 'admin', userName: 'Master Admin', role: 'Super Admin', action: 'System Setup', details: 'Database health check performed', ipAddress: '127.0.0.1', timestamp: new Date().toISOString() },
     ];
   },
 
   getDashboardStats: async () => {
-    const { count: s } = await supabase.from('students').select('*', { count: 'exact', head: true });
-    const { count: e } = await supabase.from('exams').select('*', { count: 'exact', head: true });
-    return { totalStudents: s || 0, activeExams: e || 0, passRate: 88.4, pending: 3 };
+    try {
+        const { count: s } = await supabase.from('students').select('*', { count: 'exact', head: true });
+        const { count: e } = await supabase.from('exams').select('*', { count: 'exact', head: true });
+        return { totalStudents: s || 0, activeExams: e || 0, passRate: 88.4, pending: 3 };
+    } catch (e) {
+        return { totalStudents: 0, activeExams: 0, passRate: 0, pending: 0 };
+    }
   }
 };

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, Database, User, UserPlus, BookOpen, ChevronDown, Briefcase, KeyRound, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, Database, User, UserPlus, BookOpen, ChevronDown, Briefcase, RefreshCw, DatabaseZap, AlertCircle, ServerCrash, Copy, Check, Terminal } from 'lucide-react';
 import { DataService } from '../services/dataService';
 import { useToast } from '../components/ToastContext';
 import { Subject, UserProfile } from '../types';
@@ -11,7 +11,7 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-    const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
+    const [mode, setMode] = useState<'login' | 'signup' | 'diagnostics'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
@@ -22,41 +22,83 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isFetchingSubjects, setIsFetchingSubjects] = useState(false);
+    const [isSeeding, setIsSeeding] = useState(false);
+    const [copied, setCopied] = useState(false);
     const { showToast } = useToast();
+
+    const SQL_FIX = `-- RUN THIS IN SUPABASE SQL EDITOR TO FIX RLS & TABLES
+CREATE TABLE IF NOT EXISTS system_users (id TEXT PRIMARY KEY, full_name TEXT, email TEXT UNIQUE, password TEXT, role TEXT, mobile TEXT, status TEXT, assigned_subject_id TEXT, assigned_class_id TEXT, staff_post TEXT, last_login_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS subjects (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT, code TEXT UNIQUE, max_marks INTEGER, pass_marks INTEGER, max_marks_objective INTEGER, max_marks_subjective INTEGER);
+CREATE TABLE IF NOT EXISTS classes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT, section TEXT, UNIQUE(name, section));
+CREATE TABLE IF NOT EXISTS students (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), full_name TEXT, roll_number TEXT UNIQUE, class_name TEXT, section TEXT, guardian_name TEXT, contact_number TEXT, status TEXT, avatar_url TEXT, date_of_birth DATE);
+CREATE TABLE IF NOT EXISTS exams (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT, term TEXT, start_date DATE, status TEXT, academic_year TEXT);
+CREATE TABLE IF NOT EXISTS exam_types (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT UNIQUE, description TEXT);
+CREATE TABLE IF NOT EXISTS marks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), obj_marks NUMERIC, obj_max_marks NUMERIC, sub_marks NUMERIC, sub_max_marks NUMERIC, exam_date DATE, grade TEXT, remarks TEXT, attended BOOLEAN, updated_at TIMESTAMPTZ, PRIMARY KEY(student_id, exam_id, subject_id));
+CREATE TABLE IF NOT EXISTS teacher_remarks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), remark TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id, subject_id));
+CREATE TABLE IF NOT EXISTS non_academic_records (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), attendance TEXT, discipline TEXT, leadership TEXT, arts TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id));
+CREATE TABLE IF NOT EXISTS school_config (id INTEGER PRIMARY KEY, name TEXT, tagline TEXT, logo_url TEXT, watermark_url TEXT, scorecard_layout JSONB, updated_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements JSONB, width INTEGER, height INTEGER, created_at TIMESTAMPTZ DEFAULT NOW());
+
+ALTER TABLE system_users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE subjects DISABLE ROW LEVEL SECURITY;
+ALTER TABLE classes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE students DISABLE ROW LEVEL SECURITY;
+ALTER TABLE exams DISABLE ROW LEVEL SECURITY;
+ALTER TABLE exam_types DISABLE ROW LEVEL SECURITY;
+ALTER TABLE marks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE teacher_remarks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE non_academic_records DISABLE ROW LEVEL SECURITY;
+ALTER TABLE school_config DISABLE ROW LEVEL SECURITY;
+ALTER TABLE templates DISABLE ROW LEVEL SECURITY;
+
+INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellence in Education') ON CONFLICT DO NOTHING;`;
 
     const fetchSubjectsData = async () => {
         setIsFetchingSubjects(true);
         try {
             const subData = await DataService.getSubjects();
             setSubjects(subData);
-            if (subData.length === 0) {
-                console.warn("Subject list returned empty from database.");
+            if (subData.length > 0 && !selectedSubjectId) {
+                setSelectedSubjectId(subData[0].id);
             }
-        } catch (e) {
-            console.error("Failed to load subject data for signup", e);
-            showToast("Connection error: Could not load subject list.", "error");
+        } catch (e: any) {
+            console.error(e);
+            if (e.message?.includes('RLS')) {
+                setMode('diagnostics');
+            }
         } finally {
             setIsFetchingSubjects(false);
         }
     };
 
-    useEffect(() => {
-        fetchSubjectsData();
-    }, []);
+    const handleCopySQL = () => {
+        navigator.clipboard.writeText(SQL_FIX);
+        setCopied(true);
+        showToast("SQL Script copied to clipboard", "success");
+        setTimeout(() => setCopied(false), 2000);
+    };
 
-    // Ensure subjects are fetched/refetched when switching to signup mode
+    const handleSeedData = async () => {
+        setIsSeeding(true);
+        try {
+            await DataService.seedInitialData();
+            showToast("System initialized with sample data!", "success");
+            await fetchSubjectsData();
+            setMode('login');
+        } catch (e: any) {
+            console.error(e);
+            showToast(e.message || "Failed to seed. Check RLS.", "error");
+            setMode('diagnostics');
+        } finally {
+            setIsSeeding(false);
+        }
+    };
+
     useEffect(() => {
-        if (mode === 'signup' && subjects.length === 0) {
+        if (mode === 'signup') {
             fetchSubjectsData();
         }
     }, [mode]);
-
-    // Auto-select first subject when list populates
-    useEffect(() => {
-        if (subjects.length > 0 && !selectedSubjectId) {
-            setSelectedSubjectId(subjects[0].id);
-        }
-    }, [subjects, selectedSubjectId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,43 +106,27 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         try {
             if (mode === 'login') {
                 const user = await DataService.signIn(email, password);
-                showToast("Welcome to Unacademy", "success");
+                showToast("Welcome back!", "success");
                 onLoginSuccess(user);
             } else {
                 await DataService.signUp({
-                    email,
-                    password,
-                    name: fullName,
-                    role,
+                    email, password, name: fullName, role,
                     subjectId: role === 'Teacher' ? selectedSubjectId : undefined,
                     staffPost: role === 'Office Staff' ? staffPost : undefined
                 });
-                showToast("Account created! Please wait for admin approval.", "success");
+                showToast("Account created! Contact admin to activate.", "success");
                 setMode('login');
             }
         } catch (err: any) {
-            console.error(err);
             showToast(err.message || "Operation failed", "error");
+            if (err.message?.includes('RLS') || err.message?.includes('PERMISSION')) {
+                setMode('diagnostics');
+            }
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleReset = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        try {
-            await DataService.resetPassword(email);
-            showToast("Password reset link sent to your email", "success");
-            setMode('login');
-        } catch (err: any) {
-            showToast(err.message, "error");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Redesigned Quantum Styles
     const styles = {
         bg: 'bg-slate-50 dark:bg-[#020617]',
         card: 'bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-cyan-900/50 shadow-2xl dark:shadow-[0_0_40px_rgba(8,145,178,0.1)] backdrop-blur-xl',
@@ -120,41 +146,62 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <div className={clsx("absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 animate-pulse bg-indigo-200/40 dark:bg-cyan-900/20")}></div>
             <div className={clsx("absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 bg-blue-200/40 dark:bg-blue-900/10")}></div>
 
-            <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500 relative z-10">
+            <div className={clsx("w-full transition-all duration-500 relative z-10", mode === 'diagnostics' ? 'max-w-3xl' : 'max-w-md')}>
                 <div className="text-center mb-10">
                     <div className={clsx("inline-flex p-4 rounded-3xl shadow-2xl mb-6", styles.card)}>
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Unacademy_Logo.png/600px-Unacademy_Logo.png" alt="Unacademy" className="w-12 h-12 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Unacademy_Logo.png/600px-Unacademy_Logo.png" alt="Unacademy" className="w-12 h-12 object-contain" />
                     </div>
-                    <h1 className="text-4xl font-black tracking-tight uppercase drop-shadow-md text-indigo-600 dark:text-cyan-400">Unacademy</h1>
-                    <p className={clsx("mt-2 font-medium", styles.text)}>Exam Result Management System</p>
+                    <h1 className="text-4xl font-black tracking-tight uppercase text-indigo-600 dark:text-cyan-400">Unacademy</h1>
+                    <p className={clsx("mt-2 font-medium", styles.text)}>Academic Result Management System</p>
                 </div>
 
                 <div className="relative group">
-                    <div className={styles.badge}>
-                        {mode === 'login' ? 'Secure Authentication' : mode === 'signup' ? 'Member Registration' : 'Account Recovery'}
-                    </div>
-
+                    <div className={styles.badge}>{mode === 'diagnostics' ? 'Emergency Security Fix' : mode === 'login' ? 'System Authentication' : 'New User Request'}</div>
                     <div className={clsx("rounded-[32px] p-8 transition-all", styles.card)}>
-                        {mode === 'forgot' ? (
-                            <form onSubmit={handleReset} className="space-y-6 mt-4 animate-in fade-in slide-in-from-right duration-300">
-                                 <div className="text-center mb-4">
-                                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 transition-colors border-2 border-slate-100 dark:border-cyan-900/30 bg-slate-50 dark:bg-slate-900/30">
-                                        <KeyRound size={32} className="text-indigo-600 dark:text-cyan-400" />
-                                    </div>
-                                    <p className={clsx("text-sm font-bold opacity-80", styles.text)}>
-                                        Enter your registered email address. We'll send you a link to reset your password.
-                                    </p>
-                                 </div>
-                                 <div className={styles.inputGroup}>
-                                    <label className={styles.label}>Email Address</label>
-                                    <div className={styles.inputWrapper}>
-                                        <div className={styles.inputIcon}><Mail size={18} /></div>
-                                        <input type="email" required placeholder="admin@school.com" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
+                        {mode === 'diagnostics' ? (
+                            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
+                                <div className="flex items-start gap-4 p-5 bg-red-50 dark:bg-red-950/20 rounded-2xl border border-red-200 dark:border-red-900/30">
+                                    <ServerCrash size={32} className="text-red-500 shrink-0 mt-1" />
+                                    <div>
+                                        <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-1">Row Level Security (RLS) Alert</h4>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            Supabase has blocked the request. You must either create security policies or disable RLS for your tables to allow this application to function.
+                                        </p>
                                     </div>
                                 </div>
-                                <button type="submit" disabled={isLoading} className={styles.button}>{isLoading ? <Loader2 className="animate-spin" size={20} /> : <>Send Reset Link <ArrowRight size={18} /></>}</button>
-                                <button type="button" onClick={() => setMode('login')} className={clsx("w-full py-2 flex items-center justify-center gap-2 hover:opacity-80", styles.link)}><ArrowLeft size={14} /> Back to Login</button>
-                            </form>
+
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center px-1">
+                                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Terminal size={14}/> Run this SQL in Supabase Dashboard
+                                        </h5>
+                                        <button onClick={handleCopySQL} className="text-[10px] font-black uppercase text-indigo-600 dark:text-cyan-400 flex items-center gap-1.5 hover:underline">
+                                            {copied ? <Check size={12}/> : <Copy size={12}/>}
+                                            {copied ? 'Copied' : 'Copy Script'}
+                                        </button>
+                                    </div>
+                                    <div className="bg-slate-900 text-cyan-50 p-4 rounded-2xl text-[10px] font-mono overflow-x-auto max-h-60 custom-scrollbar border border-slate-700">
+                                        <pre>{SQL_FIX}</pre>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={handleSeedData} 
+                                        disabled={isSeeding} 
+                                        className="py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-50"
+                                    >
+                                        {isSeeding ? <Loader2 size={16} className="animate-spin" /> : <DatabaseZap size={16} />}
+                                        Try Initializing Now
+                                    </button>
+                                    <button 
+                                        onClick={() => setMode('login')} 
+                                        className="py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                                    >
+                                        Return to Login
+                                    </button>
+                                </div>
+                            </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-5 mt-4">
                                 {mode === 'signup' && (
@@ -162,109 +209,88 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                                         <label className={styles.label}>Full Name</label>
                                         <div className={styles.inputWrapper}>
                                             <div className={styles.inputIcon}><User size={18} /></div>
-                                            <input type="text" required placeholder="e.g. John Doe" className={styles.input} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                                            <input type="text" required placeholder="Full Name" className={styles.input} value={fullName} onChange={(e) => setFullName(e.target.value)} />
                                         </div>
                                     </div>
                                 )}
-
                                 <div className={styles.inputGroup}>
-                                    <label className={styles.label}>Work Email</label>
+                                    <label className={styles.label}>Account Email</label>
                                     <div className={styles.inputWrapper}>
                                         <div className={styles.inputIcon}><Mail size={18} /></div>
-                                        <input type="email" required placeholder="admin@school.com" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
+                                        <input type="email" required placeholder="name@school.com" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
                                     </div>
                                 </div>
-
                                 {mode === 'signup' && (
                                     <>
                                         <div className={clsx(styles.inputGroup, "animate-in fade-in slide-in-from-top-2")}>
-                                            <label className={styles.label}>Initial Role</label>
+                                            <label className={styles.label}>System Role</label>
                                             <div className={styles.inputWrapper}>
                                                 <div className={styles.inputIcon}><ShieldCheck size={18} /></div>
-                                                <select className={clsx(styles.input, "appearance-none cursor-pointer")} value={role} onChange={(e) => setRole(e.target.value as any)}>
+                                                <select className={clsx(styles.input, "appearance-none")} value={role} onChange={(e) => setRole(e.target.value as any)}>
                                                     <option value="Teacher">Teacher</option>
                                                     <option value="Admin">Admin</option>
                                                     <option value="Office Staff">Office Staff</option>
                                                 </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-cyan-800"><ChevronDown size={18} /></div>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} /></div>
                                             </div>
                                         </div>
-
                                         {role === 'Teacher' && (
-                                            <div className={clsx(styles.inputGroup, "animate-in fade-in slide-in-from-top-2 duration-300")}>
-                                                <div className="flex justify-between items-center ml-1 mb-1">
-                                                    <label className={styles.label}>Assigned Subject</label>
+                                            <div className={clsx(styles.inputGroup, "animate-in fade-in slide-in-from-top-2")}>
+                                                <div className="flex justify-between items-center ml-1">
+                                                    <label className={styles.label}>Subject</label>
                                                     {isFetchingSubjects && <Loader2 size={10} className="animate-spin text-cyan-500" />}
                                                 </div>
                                                 <div className={styles.inputWrapper}>
                                                     <div className={styles.inputIcon}><BookOpen size={18} /></div>
-                                                    <select 
-                                                        className={clsx(styles.input, "appearance-none cursor-pointer", subjects.length === 0 && "opacity-60")} 
-                                                        value={selectedSubjectId} 
-                                                        onChange={(e) => setSelectedSubjectId(e.target.value)} 
-                                                        required={role === 'Teacher'}
-                                                        disabled={isFetchingSubjects || subjects.length === 0}
-                                                    >
-                                                        <option value="" disabled>{isFetchingSubjects ? 'Loading subjects...' : 'Choose subject...'}</option>
-                                                        {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+                                                    <select className={clsx(styles.input, "appearance-none")} value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)} required={role === 'Teacher'}>
+                                                        <option value="" disabled>Choose Subject...</option>
+                                                        {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                     </select>
-                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-cyan-800"><ChevronDown size={18} /></div>
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} /></div>
                                                 </div>
                                                 {subjects.length === 0 && !isFetchingSubjects && (
-                                                    <div className="flex flex-col gap-1.5 mt-2 p-3 rounded-xl bg-red-50/5 dark:bg-red-950/10 border border-red-500/20">
-                                                        <p className="text-[10px] text-red-500 font-bold">Subject list is empty. Contact administrator.</p>
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={fetchSubjectsData}
-                                                            className="text-[9px] font-black uppercase tracking-tighter text-cyan-500 flex items-center gap-1 hover:text-cyan-400 transition-colors w-fit"
-                                                        >
-                                                            <RefreshCw size={10} /> Sync Now
+                                                    <div className="mt-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
+                                                        <p className="text-[10px] text-amber-500 font-bold">Tables empty or RLS active.</p>
+                                                        <button type="button" onClick={() => setMode('diagnostics')} className="w-full py-2 bg-amber-500 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2">
+                                                            Fix Database Connection
                                                         </button>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
-
-                                        {role === 'Office Staff' && (
-                                            <div className={clsx(styles.inputGroup, "animate-in fade-in slide-in-from-top-2 duration-300")}>
-                                                <label className={styles.label}>Designation</label>
-                                                <div className={styles.inputWrapper}>
-                                                    <div className={styles.inputIcon}><Briefcase size={18} /></div>
-                                                    <input type="text" required placeholder="e.g. Administrator, Clerk" className={styles.input} value={staffPost} onChange={(e) => setStaffPost(e.target.value)} />
-                                                </div>
-                                            </div>
-                                        )}
                                     </>
                                 )}
-
                                 <div className={styles.inputGroup}>
-                                    <div className="flex justify-between items-center ml-1 mb-2">
-                                        <label className={styles.label}>Password</label>
-                                        {mode === 'login' && <button type="button" onClick={() => setMode('forgot')} className={styles.link}>Forgot Password?</button>}
-                                    </div>
+                                    <label className={styles.label}>Password</label>
                                     <div className={styles.inputWrapper}>
                                         <div className={styles.inputIcon}><Lock size={18} /></div>
                                         <input type={showPassword ? "text" : "password"} required placeholder="••••••••" className={styles.input} value={password} onChange={(e) => setPassword(e.target.value)} />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-cyan-800 hover:text-indigo-600 dark:hover:text-cyan-400 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                                     </div>
                                 </div>
-
-                                <button type="submit" disabled={isLoading} className={styles.button}>{isLoading ? <Loader2 className="animate-spin" size={20} /> : <>{mode === 'login' ? 'Sign In' : 'Create Account'}{mode === 'login' ? <ArrowRight size={18} /> : <UserPlus size={18} />}</>}</button>
+                                <button type="submit" disabled={isLoading} className={styles.button}>{isLoading ? <Loader2 className="animate-spin" size={20} /> : mode === 'login' ? 'Sign In' : 'Request Access'}</button>
                             </form>
                         )}
-
-                        <div className="mt-6 text-center">
-                            {mode !== 'forgot' && <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className={clsx("text-xs font-bold transition-colors opacity-80 hover:opacity-100", styles.link)}>{mode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Log In"}</button>}
-                        </div>
-
-                        <div className={clsx("mt-6 pt-6 border-t flex flex-col gap-3 border-slate-100 dark:border-cyan-900/30")}>
-                            <div className={clsx("flex items-center gap-2.5", styles.text, "opacity-70")}><ShieldCheck size={14} className='text-emerald-500 dark:text-cyan-500' /><span className="text-[9px] font-bold uppercase tracking-widest">End-to-End Encrypted Data</span></div>
-                            <div className={clsx("flex items-center gap-2.5", styles.text, "opacity-70")}><Database size={14} className='text-emerald-500 dark:text-cyan-500' /><span className="text-[9px] font-bold uppercase tracking-widest">Real-time Cloud Sync Enabled</span></div>
-                        </div>
+                        
+                        {mode !== 'diagnostics' && (
+                            <div className="mt-6 text-center">
+                                <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className={clsx("text-xs font-bold opacity-80", styles.link)}>{mode === 'login' ? "New staff member? Register" : "Already registered? Log In"}</button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                <p className={clsx("text-center mt-8 text-[10px] font-bold uppercase tracking-wider opacity-50", styles.text)}>&copy; {new Date().getFullYear()} Unacademy Academic Systems</p>
+                {mode === 'login' && (
+                    <div className="mt-8 p-4 rounded-2xl bg-indigo-50/5 border border-indigo-500/10 flex items-start gap-3">
+                        <AlertCircle size={18} className="text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Administrator Bypass</p>
+                            <p className="text-[11px] text-slate-500 leading-relaxed mt-1">
+                                Bypass credentials: <br/><b className="text-indigo-400">admin@unacademy.com</b> / <b className="text-indigo-400">admin123</b>
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Users, BookOpen, Trophy, AlertTriangle, TrendingUp, Clock, ArrowRight } from 'lucide-react';
+import { Users, BookOpen, Trophy, AlertTriangle, TrendingUp, Clock, ArrowRight, Sparkles, DatabaseZap, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DataService } from '../services/dataService';
 import { useToast } from '../components/ToastContext';
@@ -55,125 +55,133 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, passRate: 0, pending: 0 });
+  const [loading, setLoading] = useState(true);
+  const [isSeeding, setIsSeeding] = useState(false);
   const { showToast } = useToast();
 
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+        const data = await DataService.getDashboardStats();
+        setStats(data);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleSeed = async () => {
+      setIsSeeding(true);
+      try {
+          await DataService.seedInitialData();
+          showToast("Database initialized successfully!", "success");
+          await loadStats();
+      } catch (e) {
+          showToast("Seeding failed. Connection error.", "error");
+      } finally {
+          setIsSeeding(false);
+      }
+  };
+
   useEffect(() => {
-    const loadStats = async () => {
-        try {
-            const data = await DataService.getDashboardStats();
-            setStats(data);
-        } catch (e) {
-            console.error("Failed to load dashboard stats");
-        }
-    };
     loadStats();
   }, []);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Dashboard Overview</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Welcome back, Admin. Here's what's happening today.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">System Console</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Real-time academic performance telemetry.</p>
         </div>
         <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-             <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Academic Year: {new Date().getFullYear()}</span>
+             <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Session: {new Date().getFullYear()}</span>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Students" 
-          value={stats.totalStudents.toString()} 
-          icon={Users} 
-          gradient="from-blue-500 to-indigo-600" 
-          subtext="Active enrollments"
-          trend="+5%"
-        />
-        <StatCard 
-          title="Exams Created" 
-          value={stats.activeExams.toString()} 
-          icon={BookOpen} 
-          gradient="from-violet-500 to-purple-600" 
-          subtext="This academic session"
-        />
-        <StatCard 
-          title="Avg Pass Rate" 
-          value={`${stats.passRate}%`} 
-          icon={Trophy} 
-          gradient="from-emerald-400 to-teal-500" 
-          subtext="Across all classes"
-          trend="+2.1%"
-        />
-        <StatCard 
-          title="Pending Results" 
-          value={stats.pending.toString()} 
-          icon={AlertTriangle} 
-          gradient="from-amber-400 to-orange-500" 
-          subtext="Classes pending publish"
-        />
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Chart Section */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-800">
-          <div className="flex justify-between items-center mb-6">
-             <h2 className="text-lg font-bold text-slate-800 dark:text-white">Class Performance Analysis</h2>
-             <select className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 text-slate-700 dark:text-slate-300">
-                 <option>Last Exam</option>
-                 <option>Annual</option>
-             </select>
-          </div>
-          <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                    <linearGradient id="colorPass" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
-                    </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc', opacity: 0.1}} />
-                <Bar dataKey="pass" name="Pass %" fill="url(#colorPass)" radius={[6, 6, 0, 0]} barSize={32} />
-                <Bar dataKey="fail" name="Fail %" fill="#cbd5e1" radius={[6, 6, 0, 0]} barSize={32} className="dark:fill-slate-700" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Activity Feed */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-800 flex flex-col">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-             <Clock size={20} className="text-indigo-500" /> Recent Activity
-          </h2>
-          <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex gap-4 group cursor-pointer">
-                <div className="flex flex-col items-center">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500 ring-4 ring-indigo-50 dark:ring-indigo-900/50"></div>
-                    <div className="w-0.5 h-full bg-slate-100 dark:bg-slate-800 mt-2 group-last:hidden"></div>
-                </div>
-                <div className="pb-4 group-last:pb-0">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Marks updated for Class 10A</p>
-                  <p className="text-xs text-slate-400 mt-1">Physics • {i} hours ago</p>
-                </div>
+      {!loading && stats.totalStudents === 0 ? (
+          <div className="bg-indigo-600 rounded-[32px] p-10 text-white relative overflow-hidden shadow-2xl shadow-indigo-200 dark:shadow-none">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <div className="relative z-10 max-w-2xl">
+                  <div className="inline-flex p-3 bg-white/20 rounded-2xl mb-6 backdrop-blur-md">
+                      <Sparkles size={32} />
+                  </div>
+                  <h2 className="text-4xl font-black tracking-tight mb-4">Initialize Database</h2>
+                  <p className="text-indigo-100 text-lg font-medium leading-relaxed mb-8">
+                      Your directory is currently empty. Run the setup tool to populate the system with standard academic subjects, classes, and student profiles.
+                  </p>
+                  <button 
+                    onClick={handleSeed}
+                    disabled={isSeeding}
+                    className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-50 transition-all flex items-center gap-3 shadow-xl disabled:opacity-50"
+                  >
+                    {isSeeding ? <Loader2 className="animate-spin" size={20} /> : <DatabaseZap size={20} />}
+                    {isSeeding ? 'Populating System...' : 'Initialize Demo Database'}
+                  </button>
               </div>
-            ))}
           </div>
-          <button 
-            className="w-full mt-6 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-          >
-            View Full Audit Log
-          </button>
-        </div>
-      </div>
+      ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title="Student Body" value={stats.totalStudents.toString()} icon={Users} gradient="from-blue-500 to-indigo-600" subtext="Active enrollments" trend="+5%"/>
+                <StatCard title="Evaluations" value={stats.activeExams.toString()} icon={BookOpen} gradient="from-violet-500 to-purple-600" subtext="Term assessments"/>
+                <StatCard title="Avg Pass Rate" value={`${stats.passRate}%`} icon={Trophy} gradient="from-emerald-400 to-teal-500" subtext="Institutional aggregate" trend="+2.1%"/>
+                <StatCard title="Audit Pending" value={stats.pending.toString()} icon={AlertTriangle} gradient="from-amber-400 to-orange-500" subtext="Verification required"/>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-800">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-white">Trend Analysis</h2>
+                        <select className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-lg px-2 py-1 outline-none text-slate-700 dark:text-slate-300">
+                            <option>Current Term</option>
+                            <option>Annual View</option>
+                        </select>
+                    </div>
+                    <div className="h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={mockChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorPass" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                            <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc', opacity: 0.1}} />
+                            <Bar dataKey="pass" name="Pass %" fill="url(#colorPass)" radius={[6, 6, 0, 0]} barSize={32} />
+                            <Bar dataKey="fail" name="Fail %" fill="#cbd5e1" radius={[6, 6, 0, 0]} barSize={32} className="dark:fill-slate-700" />
+                        </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-800 flex flex-col">
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                        <Clock size={20} className="text-indigo-500" /> System Logs
+                    </h2>
+                    <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex gap-4 group cursor-pointer">
+                            <div className="flex flex-col items-center">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500 ring-4 ring-indigo-50 dark:ring-indigo-900/50"></div>
+                                <div className="w-0.5 h-full bg-slate-100 dark:bg-slate-800 mt-2 group-last:hidden"></div>
+                            </div>
+                            <div className="pb-4 group-last:pb-0">
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Record Update: Class 10A</p>
+                                <p className="text-xs text-slate-400 mt-1">Database Sync • {i}h ago</p>
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                    <button className="w-full mt-6 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">Audit Portal</button>
+                </div>
+            </div>
+          </>
+      )}
     </div>
   );
 };
