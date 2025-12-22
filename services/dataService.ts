@@ -30,11 +30,11 @@ const mapSubjectRecord = (s: any): Subject => ({
   id: s.id,
   name: s.name,
   code: s.code,
-  max_marks: s.max_marks,
-  pass_marks: s.pass_marks,
-  max_marks_objective: s.max_marks_objective,
-  max_marks_subjective: s.max_marks_subjective,
-} as any); // Type cast for internal mapping
+  maxMarks: s.max_marks || 0,
+  passMarks: s.pass_marks || 0,
+  maxMarksObjective: s.max_marks_objective || 0,
+  maxMarksSubjective: s.max_marks_subjective || 0,
+});
 
 const mapClass = (c: any): SchoolClass => ({
   id: c.id,
@@ -162,7 +162,7 @@ export const DataService = {
         role: user.role,
         password: user.password, 
         assigned_subject_id: user.subjectId || null,
-        staff_post: user.staffPost || null,
+        staff_post: user.staff_post || null,
         status: 'Locked'
     });
     
@@ -219,7 +219,6 @@ export const DataService = {
     }
   },
 
-  // ... (rest of the file unchanged) ...
   // Theme Settings
   
   getThemePreference: async (userId: string) => {
@@ -418,6 +417,7 @@ export const DataService = {
       guardian_name: s.guardianName,
       status: s.status,
       avatar_url: s.avatarUrl,
+      // Fix typo: s.date_of_birth does not exist on Omit<Student, 'id' | 'rollNumber'>, use s.dateOfBirth
       date_of_birth: s.dateOfBirth
     }));
     const { error } = await supabase.from('students').insert(records);
@@ -453,8 +453,11 @@ export const DataService = {
 
   getSubjects: async (): Promise<Subject[]> => {
     const { data, error } = await supabase.from('subjects').select('*').order('name');
-    if (error) return [];
-    return (data || []).map(mapSubjectRecord as any);
+    if (error) {
+        console.error("Supabase error fetching subjects:", error);
+        return [];
+    }
+    return (data || []).map(mapSubjectRecord);
   },
 
   addSubject: async (sub: Partial<Subject>): Promise<void> => {
@@ -481,7 +484,7 @@ export const DataService = {
   },
 
   addClass: async (cls: Partial<SchoolClass>): Promise<void> => {
-    const { error } = await supabase.from('classes').insert({ name: cls.className, section: cls.section });
+    const { error = null } = await supabase.from('classes').insert({ name: cls.className, section: cls.section });
     if (error) throw new Error(error.message || "Failed to add class");
   },
 
@@ -561,7 +564,7 @@ export const DataService = {
   bulkUpdateMarks: async (records: MarkRecord[]): Promise<void> => {
     if (records.length === 0) return;
     const dbRecords = records.map(m => ({
-      student_id: m.studentId, exam_id: m.examId, subject_id: m.subjectId, obj_marks: m.objMarks || 0, obj_max_marks: m.objMaxMarks || 0, sub_marks: m.subMarks || 0, sub_max_marks: m.subMaxMarks || 0, exam_date: m.examDate || new Date().toISOString().split('T')[0], grade: m.grade || 'F', remarks: m.remarks || '', attended: m.attended ?? true, updated_at: new Date().toISOString()
+      student_id: m.studentId, exam_id: m.examId, subject_id: m.subjectId, obj_marks: m.objMarks || 0, obj_max_marks: m.objMaxMarks || 0, sub_marks: m.sub_marks || 0, sub_max_marks: m.subMaxMarks || 0, exam_date: m.exam_date || new Date().toISOString().split('T')[0], grade: m.grade || 'F', remarks: m.remarks || '', attended: m.attended ?? true, updated_at: new Date().toISOString()
     }));
     const { error } = await supabase.from('marks').upsert(dbRecords, { onConflict: 'student_id,exam_id,subject_id' });
     if (error) throw new Error(error.message || "Database batch operation failed");

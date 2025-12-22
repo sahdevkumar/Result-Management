@@ -24,17 +24,30 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const [isLoading, setIsLoading] = useState(false);
     const { showToast } = useToast();
 
-    useEffect(() => {
-        const loadSubjects = async () => {
-            try {
-                const data = await DataService.getSubjects();
-                setSubjects(data);
-            } catch (e) {
-                console.error("Failed to load subjects for signup", e);
+    const fetchSubjects = async () => {
+        try {
+            const data = await DataService.getSubjects();
+            setSubjects(data);
+            // Auto-select first subject if none selected
+            if (data.length > 0 && !selectedSubjectId) {
+                setSelectedSubjectId(data[0].id);
             }
-        };
-        loadSubjects();
+        } catch (e) {
+            console.error("Failed to load subjects for signup", e);
+            showToast("Warning: Could not load subject list. Check database permissions.", "error");
+        }
+    };
+
+    useEffect(() => {
+        fetchSubjects();
     }, []);
+
+    // Ensure subjects are fetched/refetched when switching to signup mode
+    useEffect(() => {
+        if (mode === 'signup' && subjects.length === 0) {
+            fetchSubjects();
+        }
+    }, [mode]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,7 +77,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         }
     };
 
-    // ... (rest of the file unchanged) ...
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -94,7 +106,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         // Button & Misc
         button: 'w-full py-4 bg-indigo-600 dark:bg-cyan-500 hover:bg-indigo-700 dark:hover:bg-cyan-400 text-white dark:text-black rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all transform active:scale-[0.98] flex items-center justify-center gap-2',
         link: 'text-indigo-600 dark:text-cyan-500 hover:text-indigo-800 dark:hover:text-cyan-300 transition-colors font-bold text-[10px] uppercase tracking-wide',
-        // Updated badge style: uses bg-slate-50 to avoid global bg-white glass override
         badge: 'absolute left-1/2 -translate-x-1/2 -top-3.5 z-20 bg-slate-50 dark:bg-[#0a0a0a] text-indigo-600 dark:text-cyan-400 border border-indigo-100 dark:border-cyan-800 shadow-[0_2px_10px_rgba(0,0,0,0.05)] px-6 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap',
         text: 'text-slate-600 dark:text-cyan-700'
     };
@@ -119,7 +130,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
 
                 <div className="relative group">
-                    {/* Badge positioned outside the card container for perfect layering */}
                     <div className={styles.badge}>
                         {mode === 'login' ? 'Secure Authentication' : mode === 'signup' ? 'Member Registration' : 'Account Recovery'}
                     </div>
@@ -252,6 +262,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                                                         <ChevronDown size={18} />
                                                     </div>
                                                 </div>
+                                                {subjects.length === 0 && (
+                                                    <p className="text-[10px] text-red-500 font-bold px-1">Subject list is empty. Contact administrator.</p>
+                                                )}
                                             </div>
                                         )}
 
