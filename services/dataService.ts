@@ -131,7 +131,8 @@ export const DataService = {
           email: profile.email,
           role: profile.role,
           status: profile.status,
-          assignedSubjectId: profile.assigned_subject_id
+          assignedSubjectId: profile.assigned_subject_id,
+          assignedClassId: profile.assigned_class_id
         };
     } catch (e: any) {
         throw new Error(e.message || "Invalid login credentials");
@@ -162,6 +163,7 @@ export const DataService = {
         role: user.role,
         password: user.password, 
         assigned_subject_id: user.subjectId || null,
+        assigned_class_id: user.classId || null,
         staff_post: user.staff_post || null,
         status: 'Locked'
     });
@@ -212,7 +214,8 @@ export const DataService = {
           email: profile.email,
           role: profile.role,
           status: profile.status,
-          assignedSubjectId: profile.assigned_subject_id
+          assignedSubjectId: profile.assigned_subject_id,
+          assignedClassId: profile.assigned_class_id
         };
     } catch (e) {
         return null;
@@ -417,7 +420,6 @@ export const DataService = {
       guardian_name: s.guardianName,
       status: s.status,
       avatar_url: s.avatarUrl,
-      // Fix typo: s.date_of_birth does not exist on Omit<Student, 'id' | 'rollNumber'>, use s.dateOfBirth
       date_of_birth: s.dateOfBirth
     }));
     const { error } = await supabase.from('students').insert(records);
@@ -564,7 +566,7 @@ export const DataService = {
   bulkUpdateMarks: async (records: MarkRecord[]): Promise<void> => {
     if (records.length === 0) return;
     const dbRecords = records.map(m => ({
-      student_id: m.studentId, exam_id: m.examId, subject_id: m.subjectId, obj_marks: m.objMarks || 0, obj_max_marks: m.objMaxMarks || 0, sub_marks: m.sub_marks || 0, sub_max_marks: m.subMaxMarks || 0, exam_date: m.exam_date || new Date().toISOString().split('T')[0], grade: m.grade || 'F', remarks: m.remarks || '', attended: m.attended ?? true, updated_at: new Date().toISOString()
+      student_id: m.studentId, exam_id: m.examId, subject_id: m.subjectId, obj_marks: m.objMarks || 0, obj_max_marks: m.objMaxMarks || 0, sub_marks: m.subMarks || 0, sub_max_marks: m.subMaxMarks || 0, exam_date: m.examDate || new Date().toISOString().split('T')[0], grade: m.grade || 'F', remarks: m.remarks || '', attended: m.attended ?? true, updated_at: new Date().toISOString()
     }));
     const { error } = await supabase.from('marks').upsert(dbRecords, { onConflict: 'student_id,exam_id,subject_id' });
     if (error) throw new Error(error.message || "Database batch operation failed");
@@ -605,7 +607,11 @@ export const DataService = {
 
   // --- System User Management ---
   getSystemUsers: async () => {
-    const { data, error } = await supabase.from('system_users').select('*, subjects(name)').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+        .from('system_users')
+        .select('*, subjects(name), classes(name, section)')
+        .order('created_at', { ascending: false });
+        
     if (error) return [];
     return data.map((u: any) => ({
         id: u.id,
@@ -616,6 +622,7 @@ export const DataService = {
         status: u.status,
         lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never',
         assignedSubject: u.subjects?.name,
+        assignedClass: u.classes ? `${u.classes.name} - ${u.classes.section}` : undefined,
         staffPost: u.staff_post
     }));
   },

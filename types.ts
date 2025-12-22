@@ -19,6 +19,7 @@ export interface UserProfile {
   role: 'Super Admin' | 'Principal' | 'Admin' | 'Teacher' | 'Office Staff';
   status: 'Active' | 'Locked';
   assignedSubjectId?: string;
+  assignedClassId?: string;
 }
 
 export interface Student {
