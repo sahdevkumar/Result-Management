@@ -26,7 +26,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const [copied, setCopied] = useState(false);
     const { showToast } = useToast();
 
-    const SQL_FIX = `-- RUN THIS IN SUPABASE SQL EDITOR TO FIX RLS & TABLES
+    const SQL_FIX = `-- RUN THIS IN SUPABASE SQL EDITOR
+-- 1. ENSURE TABLES EXIST
 CREATE TABLE IF NOT EXISTS system_users (id TEXT PRIMARY KEY, full_name TEXT, email TEXT UNIQUE, password TEXT, role TEXT, mobile TEXT, status TEXT, assigned_subject_id TEXT, assigned_class_id TEXT, staff_post TEXT, last_login_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS subjects (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT, code TEXT UNIQUE, max_marks INTEGER, pass_marks INTEGER, max_marks_objective INTEGER, max_marks_subjective INTEGER);
 CREATE TABLE IF NOT EXISTS classes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT, section TEXT, UNIQUE(name, section));
@@ -36,9 +37,14 @@ CREATE TABLE IF NOT EXISTS exam_types (id UUID PRIMARY KEY DEFAULT gen_random_uu
 CREATE TABLE IF NOT EXISTS marks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), obj_marks NUMERIC, obj_max_marks NUMERIC, sub_marks NUMERIC, sub_max_marks NUMERIC, exam_date DATE, grade TEXT, remarks TEXT, attended BOOLEAN, updated_at TIMESTAMPTZ, PRIMARY KEY(student_id, exam_id, subject_id));
 CREATE TABLE IF NOT EXISTS teacher_remarks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), remark TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id, subject_id));
 CREATE TABLE IF NOT EXISTS non_academic_records (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), attendance TEXT, discipline TEXT, leadership TEXT, arts TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id));
-CREATE TABLE IF NOT EXISTS school_config (id INTEGER PRIMARY KEY, name TEXT, tagline TEXT, logo_url TEXT, watermark_url TEXT, scorecard_layout JSONB, updated_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS school_config (id INTEGER PRIMARY KEY, name TEXT, tagline TEXT, logo_url TEXT, watermark_url TEXT, scorecard_layout JSONB, role_permissions JSONB, updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements JSONB, width INTEGER, height INTEGER, created_at TIMESTAMPTZ DEFAULT NOW());
 
+-- 2. APPLY SCHEMA MIGRATIONS (IF COLUMNS ARE MISSING)
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
+
+-- 3. DISABLE RLS (REQUIRED FOR CLIENT-SIDE OPERATION)
 ALTER TABLE system_users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE subjects DISABLE ROW LEVEL SECURITY;
 ALTER TABLE classes DISABLE ROW LEVEL SECURITY;
@@ -51,7 +57,8 @@ ALTER TABLE non_academic_records DISABLE ROW LEVEL SECURITY;
 ALTER TABLE school_config DISABLE ROW LEVEL SECURITY;
 ALTER TABLE templates DISABLE ROW LEVEL SECURITY;
 
-INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellence in Education') ON CONFLICT DO NOTHING;`;
+-- 4. INSERT DEFAULT CONFIG RECORD
+INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellence in Education') ON CONFLICT (id) DO NOTHING;`;
 
     const fetchSubjectsData = async () => {
         setIsFetchingSubjects(true);
@@ -230,6 +237,7 @@ INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellenc
                                                     <option value="Teacher">Teacher</option>
                                                     <option value="Admin">Admin</option>
                                                     <option value="Office Staff">Office Staff</option>
+                                                    <option value="Principal">Principal</option>
                                                 </select>
                                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} /></div>
                                             </div>
@@ -279,18 +287,6 @@ INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellenc
                         )}
                     </div>
                 </div>
-
-                {mode === 'login' && (
-                    <div className="mt-8 p-4 rounded-2xl bg-indigo-50/5 border border-indigo-500/10 flex items-start gap-3">
-                        <AlertCircle size={18} className="text-indigo-500 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Administrator Bypass</p>
-                            <p className="text-[11px] text-slate-500 leading-relaxed mt-1">
-                                Bypass credentials: <br/><b className="text-indigo-400">admin@unacademy.com</b> / <b className="text-indigo-400">admin123</b>
-                            </p>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

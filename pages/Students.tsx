@@ -63,6 +63,33 @@ export const Students: React.FC = () => {
     } catch (err) { showToast(editingId ? "Failed to update student." : "Failed to add student.", 'error'); } finally { setIsSubmitting(false); }
   };
 
+  const handleDownloadSample = () => {
+    const targetClass = classes.find(c => c.id === importClassId);
+    let csvContent = "";
+    
+    if (targetClass) {
+        // Simplified format for specific class
+        csvContent = "Full Name, Guardian Name, Contact Number, Date of Birth\n" +
+                     "John Doe, Robert Doe, 9876543210, 2010-05-15\n" +
+                     "Jane Smith, Michael Smith, 9876543211, 2011-08-20";
+    } else {
+        // Full format with class and section
+        csvContent = "Full Name, Class, Section, Guardian Name, Contact Number, Date of Birth\n" +
+                     "John Doe, Class 10, A, Robert Doe, 9876543210, 2010-05-15\n" +
+                     "Jane Smith, Class 9, B, Michael Smith, 9876543211, 2011-08-20";
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", targetClass ? `sample_students_${targetClass.className.replace(/\s+/g, '_')}.csv` : "sample_students_all_classes.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Sample CSV file generated and downloaded", "info");
+  };
+
   const processCSV = async (text: string) => {
       setIsImporting(true);
       try {
@@ -96,7 +123,7 @@ export const Students: React.FC = () => {
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm dark:shadow-none border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-4 justify-between bg-slate-50/50 dark:bg-slate-800/50">
-          <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Search by name or roll number..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+          <div className="relative flex-1 max-md:max-w-none max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Search by name or roll number..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
           <div className="flex gap-2"><button onClick={() => setShowFilter(!showFilter)} className={clsx("flex items-center gap-2 px-3 py-2.5 border rounded-xl text-sm transition-all", showFilter ? "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800")}><Filter size={16} /><span>Advanced Filter</span></button></div>
         </div>
 
@@ -181,7 +208,7 @@ export const Students: React.FC = () => {
                </div>
                <div className="p-6 space-y-6">
                    <div><label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Target Class (Optional)</label><select className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white" value={importClassId} onChange={(e) => setImportClassId(e.target.value)}><option value="">Select a class to enable simplified import...</option>{classes.map(c => (<option key={c.id} value={c.id}>{c.className} - {c.section}</option>))}</select><p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">If selected, the CSV only needs Name, Guardian, Contact, and DOB fields.</p></div>
-                   <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl p-4"><h4 className="text-sm font-bold text-indigo-800 dark:text-indigo-300 mb-2 flex items-center gap-2"><AlertTriangle size={16} /> Instructions</h4><ul className="list-disc list-inside text-xs text-indigo-700 dark:text-indigo-400 space-y-1"><li>File must be in <strong>.CSV</strong> format.</li><li>Required columns: {importClassId ? <strong>Full Name, Guardian Name, Contact Number, Date of Birth</strong> : <strong>Full Name, Class, Section, Guardian Name, Contact Number, Date of Birth</strong>}</li>{!importClassId && <li>Class and Section must match exactly with existing classes in the system.</li>}<li>Roll numbers will be auto-generated.</li><li>Date format should be YYYY-MM-DD.</li></ul><button onClick={() => { /* sample csv logic */ }} className="mt-3 flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 hover:underline"><FileDown size={14} /> Download Sample CSV</button></div>
+                   <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl p-4"><h4 className="text-sm font-bold text-indigo-800 dark:text-indigo-300 mb-2 flex items-center gap-2"><AlertTriangle size={16} /> Instructions</h4><ul className="list-disc list-inside text-xs text-indigo-700 dark:text-indigo-400 space-y-1"><li>File must be in <strong>.CSV</strong> format.</li><li>Required columns: {importClassId ? <strong>Full Name, Guardian Name, Contact Number, Date of Birth</strong> : <strong>Full Name, Class, Section, Guardian Name, Contact Number, Date of Birth</strong>}</li>{!importClassId && <li>Class and Section must match exactly with existing classes in the system.</li>}<li>Roll numbers will be auto-generated.</li><li>Date format should be YYYY-MM-DD.</li></ul><button onClick={handleDownloadSample} className="mt-3 flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 hover:underline"><FileDown size={14} /> Download Sample CSV</button></div>
                    <div><label className="block w-full cursor-pointer group"><div className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-indigo-400 transition-all">{isImporting ? (<div className="flex flex-col items-center gap-2"><Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={32} /><span className="text-sm font-medium text-slate-500 dark:text-slate-400">Processing file...</span></div>) : (<><div className="p-3 bg-white dark:bg-slate-700 rounded-full shadow-sm mb-2 group-hover:scale-110 transition-transform"><Upload className="text-slate-400 dark:text-slate-300 group-hover:text-indigo-500 dark:group-hover:text-indigo-400" size={24} /></div><p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Click to upload or drag & drop</p><p className="text-xs text-slate-400 dark:text-slate-500">CSV files only</p></>)}</div><input type="file" accept=".csv" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if(file) { const reader = new FileReader(); reader.onload = (ev) => processCSV(ev.target?.result as string); reader.readAsText(file); e.target.value = ''; } }} disabled={isImporting} /></label></div>
                </div>
            </div>

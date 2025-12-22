@@ -220,6 +220,13 @@ export const DataService = {
 
         await supabase.from('exam_types').upsert([{ name: 'Unit Test' }, { name: 'Final Exam' }], { onConflict: 'name' });
 
+        // Seed basic school config
+        await supabase.from('school_config').upsert({
+            id: 1,
+            name: 'UNACADEMY',
+            tagline: 'Excellence in Education'
+        }, { onConflict: 'id' });
+
         return true;
     } catch (e: any) {
         if (e.code === '42501') throw new Error("RLS_BLOCKED: Cannot seed data. Row Level Security is active on Supabase.");
@@ -239,29 +246,43 @@ export const DataService = {
   getSchoolInfo: async () => {
     const { data, error } = await supabase.from('school_config').select('*').eq('id', 1).maybeSingle();
     if (error || !data) {
-      return { name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '', scorecard_layout: null };
+      return { name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '', scorecard_layout: null, role_permissions: null };
     }
     return {
       name: data.name,
       tagline: data.tagline,
       logo: data.logo_url,
       watermark: data.watermark_url,
-      scorecard_layout: data.scorecard_layout
+      scorecard_layout: data.scorecard_layout,
+      role_permissions: data.role_permissions
     };
   },
 
-  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, scorecard_layout?: any }) => {
+  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, scorecard_layout?: any, role_permissions?: any }) => {
     const dbRecord = {
       id: 1, 
-      name: info.name,
-      tagline: info.tagline,
-      logo_url: info.logo,
-      watermark_url: info.watermark,
-      scorecard_layout: info.scorecard_layout,
+      name: info.name || 'UNACADEMY',
+      tagline: info.tagline || 'Excellence in Education',
+      logo_url: info.logo || '',
+      watermark_url: info.watermark || '',
+      scorecard_layout: info.scorecard_layout || null,
+      role_permissions: info.role_permissions || null,
       updated_at: new Date().toISOString()
     };
-    const { error } = await supabase.from('school_config').upsert(dbRecord, { onConflict: 'id' });
-    if (error) throw new Error(error.message || "Failed to update school info");
+    
+    const { error } = await supabase
+      .from('school_config')
+      .upsert(dbRecord, { onConflict: 'id' });
+      
+    if (error) {
+        // Prevent [object Object] by logging and throwing the message string
+        console.error("DATA_SERVICE_UPSERT_ERROR:", error.message || error);
+        
+        if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions'))) {
+            throw new Error(`DATABASE_SCHEMA_OUT_OF_DATE: The column 'role_permissions' is missing in the 'school_config' table. Please run the SQL fix in Login > Diagnostics.`);
+        }
+        throw new Error(error.message || "Failed to update school configuration.");
+    }
   },
 
   uploadFile: async (file: File, folder: string = 'branding'): Promise<string> => {
@@ -363,7 +384,7 @@ export const DataService = {
       avatar_url: s.avatarUrl,
       date_of_birth: s.dateOfBirth
     }));
-    const { error } = await supabase.from('students').insert(records);
+    const { error = null } = await supabase.from('students').insert(records);
     if (error) throw new Error(error.message || "Failed to bulk add students");
   },
 
@@ -445,12 +466,12 @@ export const DataService = {
   },
 
   addExamType: async (t: Partial<ExamType>): Promise<void> => {
-    const { error } = await supabase.from('exam_types').insert({ name: t.name, description: t.description });
+    const { error = null } = await supabase.from('exam_types').insert({ name: t.name, description: t.description });
     if (error) throw new Error(error.message || "Failed to add exam type");
   },
 
   updateExamType: async (t: ExamType): Promise<void> => {
-    const { error } = await supabase.from('exam_types').update({ name: t.name, description: t.description }).eq('id', t.id);
+    const { error = null } = await supabase.from('exam_types').update({ name: t.name, description: t.description }).eq('id', t.id);
     if (error) throw new Error(error.message || "Failed to update exam type");
   },
 
@@ -500,7 +521,7 @@ export const DataService = {
     const dbRecords = records.map(m => ({
       student_id: m.studentId, exam_id: m.examId, subject_id: m.subjectId, obj_marks: m.objMarks || 0, obj_max_marks: m.objMaxMarks || 0, sub_marks: m.subMarks || 0, sub_max_marks: m.subMaxMarks || 0, exam_date: m.examDate || new Date().toISOString().split('T')[0], grade: m.grade || 'F', remarks: m.remarks || '', attended: m.attended ?? true, updated_at: new Date().toISOString()
     }));
-    const { error } = await supabase.from('marks').upsert(dbRecords, { onConflict: 'student_id,exam_id,subject_id' });
+    const { error = null } = await supabase.from('marks').upsert(dbRecords, { onConflict: 'student_id,exam_id,subject_id' });
     if (error) throw new Error(error.message || "Database batch operation failed");
   },
 
@@ -538,21 +559,23 @@ export const DataService = {
   getSystemUsers: async () => {
     const { data, error } = await supabase
         .from('system_users')
-        .select('*, subjects(name), classes(name, section)')
+        .select('*') // Simplified for absolute reliability
         .order('created_at', { ascending: false });
-    if (error) return [];
-    return data.map((u: any) => ({
-        id: u.id,
-        name: u.full_name,
-        email: u.email,
-        mobile: u.mobile,
-        role: u.role,
-        status: u.status,
-        lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never',
-        assignedSubject: u.subjects?.name,
-        assignedClass: u.classes ? `${u.classes.name} - ${u.classes.section}` : undefined,
-        staffPost: u.staff_post
-    }));
+        
+    if (error) throw error;
+    
+    return (data || []).map((u: any) => {
+        return {
+            id: u.id,
+            name: u.full_name || 'N/A',
+            email: u.email || 'N/A',
+            mobile: u.mobile || '',
+            role: u.role || 'Staff',
+            status: u.status || 'Locked',
+            lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never',
+            staffPost: u.staff_post
+        };
+    });
   },
 
   updateSystemUser: async (id: string, updates: any) => {

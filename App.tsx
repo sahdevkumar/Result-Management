@@ -15,6 +15,7 @@ import { ScoreCard } from './pages/ScoreCard';
 import { TeachersRemarks } from './pages/TeachersRemarks'; 
 import { RolePermission } from './pages/RolePermission';
 import { UserManagement } from './pages/UserManagement';
+import { AIChat } from './pages/AIChat';
 import { Login } from './pages/Login';
 import { Menu, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { DataService } from './services/dataService';
@@ -23,14 +24,14 @@ import { ThemeProvider } from './components/ThemeContext';
 import { UserProfile } from './types';
 import clsx from 'clsx';
 
-const AccessGuard: React.FC<{ user: UserProfile, children: React.ReactNode }> = ({ user, children }) => {
+const AccessGuard: React.FC<{ user: UserProfile, matrix: Record<string, string[]> | null, children: React.ReactNode }> = ({ user, matrix, children }) => {
   const location = useLocation();
-  const hasAccess = canAccessPath(location.pathname, user.role);
+  const hasAccess = canAccessPath(location.pathname, user.role, matrix);
   if (!hasAccess) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
-const Layout: React.FC<{ user: UserProfile, onLogout: () => void }> = ({ user, onLogout }) => {
+const Layout: React.FC<{ user: UserProfile, matrix: Record<string, string[]> | null, onLogout: () => void }> = ({ user, matrix, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -54,7 +55,7 @@ const Layout: React.FC<{ user: UserProfile, onLogout: () => void }> = ({ user, o
 
   return (
     <div className={clsx("flex min-h-screen font-sans print:bg-white print:block print:min-h-0 print-reset transition-colors duration-300", mainBg)}>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} isOnline={isOnline} onLogout={handleLogout} user={user} />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} isOnline={isOnline} onLogout={handleLogout} user={user} permissionMatrix={matrix} />
       <div className={clsx("lg:hidden fixed top-0 left-0 right-0 h-16 backdrop-blur-md border-b z-40 flex items-center justify-between px-4 shadow-sm no-print", mobileHeaderClass)}>
          <div className="flex items-center gap-3">
              <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-lg transition-colors text-slate-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-cyan-950/30"><Menu size={24} /></button>
@@ -66,7 +67,7 @@ const Layout: React.FC<{ user: UserProfile, onLogout: () => void }> = ({ user, o
       </div>
       <main className={clsx("flex-1 p-4 lg:p-8 overflow-y-auto h-screen transition-all duration-300", "lg:ml-72", "pt-20 lg:pt-8", "print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:static print-reset")}>
         <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0">
-            <AccessGuard user={user}><Outlet context={{ user }} /></AccessGuard>
+            <AccessGuard user={user} matrix={matrix}><Outlet context={{ user }} /></AccessGuard>
         </div>
       </main>
     </div>
@@ -76,12 +77,25 @@ const Layout: React.FC<{ user: UserProfile, onLogout: () => void }> = ({ user, o
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [permissionMatrix, setPermissionMatrix] = useState<Record<string, string[]> | null>(null);
+
+  const loadConfig = async () => {
+    try {
+        const info = await DataService.getSchoolInfo();
+        if (info.role_permissions) {
+            setPermissionMatrix(info.role_permissions as any);
+        }
+    } catch (e) {
+        console.error("Config load error", e);
+    }
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
         try {
             const currentUser = await DataService.getCurrentUser();
             setUser(currentUser);
+            if (currentUser) await loadConfig();
         } catch (e) {
             setUser(null);
         } finally {
@@ -104,11 +118,12 @@ const App: React.FC = () => {
   return (
     <ThemeProvider userId={user?.id}>
       <ToastProvider>
-        {!user ? <Login onLoginSuccess={(u) => setUser(u)} /> : (
+        {!user ? <Login onLoginSuccess={(u) => { setUser(u); loadConfig(); }} /> : (
             <Router>
               <Routes>
-                <Route path="/" element={<Layout user={user} onLogout={() => setUser(null)} />}>
+                <Route path="/" element={<Layout user={user} matrix={permissionMatrix} onLogout={() => setUser(null)} />}>
                   <Route index element={<Dashboard />} />
+                  <Route path="chat" element={<AIChat />} />
                   <Route path="students" element={<Students />} />
                   <Route path="exams" element={<Exams />} />
                   <Route path="marks" element={<MarksEntry />} />

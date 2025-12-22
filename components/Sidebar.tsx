@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, FileText, BarChart3, Settings, LogOut, 
   PenTool, X, Wifi, WifiOff, Palette, Printer, CreditCard, 
   MessageSquareQuote, GraduationCap, Activity, ShieldCheck, UserCircle, UserCog,
-  Sun, Moon, Monitor, ChevronUp, ChevronDown
+  Sun, Moon, Monitor, ChevronUp, ChevronDown, Sparkles
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { useTheme } from './ThemeContext';
@@ -17,11 +17,40 @@ interface SidebarProps {
   isOnline: boolean;
   onLogout: () => void;
   user: UserProfile;
+  permissionMatrix: Record<string, string[]> | null;
 }
 
-export const canAccessPath = (path: string, role: string): boolean => {
-  if (role === 'Super Admin' || role === 'Principal') return true;
-  const commonPaths = ['/', '/students', '/reports', '/scorecard'];
+const PATH_TO_ID: Record<string, string> = {
+  '/': 'nav_dashboard',
+  '/students': 'nav_students',
+  '/exams': 'nav_exams',
+  '/marks': 'entry_marks',
+  '/remarks': 'entry_remarks',
+  '/non-academic': 'entry_non_academic',
+  '/scorecard': 'output_scorecard',
+  '/reports': 'output_reports',
+  '/print': 'output_print',
+  '/templates': 'design_templates',
+  '/settings': 'config_settings',
+  '/roles': 'sec_roles',
+  '/users': 'sec_users',
+  '/chat': 'nav_chat'
+};
+
+export const canAccessPath = (path: string, role: string, matrix: Record<string, string[]> | null): boolean => {
+  if (role === 'Super Admin') return true;
+  
+  // If we have a dynamic matrix from DB, use it
+  if (matrix && matrix[role]) {
+    const permId = PATH_TO_ID[path];
+    if (permId) {
+        return matrix[role].includes(permId);
+    }
+  }
+
+  // Fallback to original hardcoded logic if no matrix is present or path not mapped
+  if (role === 'Principal') return true;
+  const commonPaths = ['/', '/students', '/reports', '/scorecard', '/chat'];
   switch (role) {
     case 'Admin': return path !== '/roles';
     case 'Teacher': return [...commonPaths, '/marks', '/remarks', '/non-academic'].includes(path);
@@ -30,7 +59,7 @@ export const canAccessPath = (path: string, role: string): boolean => {
   }
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onLogout, user }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onLogout, user, permissionMatrix }) => {
   const location = useLocation();
   const { mode, setMode } = useTheme();
   const navRef = useRef<HTMLDivElement>(null);
@@ -39,6 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: Sparkles, label: 'AI Help Desk', path: '/chat' },
     { icon: Users, label: 'Students', path: '/students' },
     { icon: FileText, label: 'Exams', path: '/exams' },
     { icon: PenTool, label: 'Marks Entry', path: '/marks' },
@@ -59,9 +89,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
     { icon: Palette, label: 'Template Design', path: '/templates' },
   ];
 
-  const filteredNavItems = navItems.filter(item => canAccessPath(item.path, user.role));
-  const filteredSystemItems = systemItems.filter(item => canAccessPath(item.path, user.role));
-  const filteredLayoutItems = layoutItems.filter(item => canAccessPath(item.path, user.role));
+  const filteredNavItems = navItems.filter(item => canAccessPath(item.path, user.role, permissionMatrix));
+  const filteredSystemItems = systemItems.filter(item => canAccessPath(item.path, user.role, permissionMatrix));
+  const filteredLayoutItems = layoutItems.filter(item => canAccessPath(item.path, user.role, permissionMatrix));
 
   const handleNavClick = () => {
     if (window.innerWidth < 1024) onClose();
@@ -71,7 +101,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
     if (navRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = navRef.current;
         setCanScrollUp(scrollTop > 0);
-        // Using a small buffer (1px) for float precision issues
         setCanScrollDown(Math.ceil(scrollTop + clientHeight) < scrollHeight);
     }
   };
@@ -88,9 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
     if (nav) {
         nav.addEventListener('scroll', checkScroll);
         window.addEventListener('resize', checkScroll);
-        // Initial check
         checkScroll();
-        // Check again after a delay to ensure rendering is complete
         setTimeout(checkScroll, 100);
     }
     return () => {
@@ -99,7 +126,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
     };
   }, [filteredNavItems, filteredSystemItems, filteredLayoutItems, isOpen]);
 
-  // Quantum Theme Styling Constants (Responsive)
   const sidebarBg = 'bg-white dark:bg-[#0a0a0a] border-r border-slate-200 dark:border-cyan-900/50 text-slate-600 dark:text-cyan-400 dark:bg-[linear-gradient(rgba(0,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.03)_1px,transparent_1px)] dark:bg-[size:20px_20px]';
   const logoBg = 'border border-cyan-500 text-cyan-500 dark:text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.2)] bg-cyan-50 dark:bg-cyan-950/30';
   const subHeaderClass = "text-slate-400 dark:text-cyan-900 font-bold border-b border-slate-100 dark:border-cyan-900/30 pb-1";
@@ -115,7 +141,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
       <div className={clsx("fixed inset-0 bg-slate-900/20 dark:bg-cyan-950/40 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 print:hidden", isOpen ? "opacity-100" : "opacity-0 pointer-events-none")} onClick={onClose} />
 
       <div className={clsx("h-screen w-72 flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 lg:translate-x-0 shadow-2xl print:hidden", sidebarBg, isOpen ? "translate-x-0" : "-translate-x-full")}>
-        {/* Header */}
         <div className="p-8 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className={clsx("w-10 h-10 rounded-xl flex items-center justify-center transition-all", logoBg)}>
@@ -129,19 +154,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
           <button onClick={onClose} className="lg:hidden opacity-70 hover:opacity-100 text-slate-500 dark:text-cyan-400"><X size={20} /></button>
         </div>
 
-        {/* Navigation Wrapper with Scroll Indicators */}
         <div className="flex-1 relative min-h-0 flex flex-col">
-            {/* Up Indicator */}
             <div className={clsx("absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white dark:from-[#0a0a0a] to-transparent z-10 flex justify-center items-start transition-opacity duration-300 pointer-events-none", canScrollUp ? "opacity-100" : "opacity-0")}>
-                <button 
-                    onClick={() => scrollNav('up')} 
-                    className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-full shadow-sm border border-slate-200 dark:border-slate-800 mt-1 animate-bounce hover:bg-indigo-50 dark:hover:bg-indigo-900/50"
-                >
-                    <ChevronUp size={14} className="text-slate-500 dark:text-slate-400" />
-                </button>
+                <button onClick={() => scrollNav('up')} className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-full shadow-sm border border-slate-200 dark:border-slate-800 mt-1 animate-bounce hover:bg-indigo-50 dark:hover:bg-indigo-900/50"><ChevronUp size={14} className="text-slate-500 dark:text-slate-400" /></button>
             </div>
 
-            {/* Navigation */}
             <nav ref={navRef} className="flex-1 px-4 space-y-2 overflow-y-auto hide-scrollbar pb-6 pt-2">
               <div className={clsx("text-xs uppercase tracking-wider px-4 mb-2 mt-2", subHeaderClass)}>Main Menu</div>
               {filteredNavItems.map((item) => (
@@ -150,41 +167,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
                 </NavLink>
               ))}
               
-               {filteredSystemItems.length > 0 && (
-                 <>
-                   <div className={clsx("text-xs uppercase tracking-wider px-4 mb-2 mt-6", subHeaderClass)}>System</div>
-                   {filteredSystemItems.map((item) => (
-                     <NavLink key={item.path} to={item.path} onClick={handleNavClick} className={({ isActive }) => clsx('relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group', getActiveItemClass(isActive))}>
-                        <item.icon size={20} /> <span className="font-medium tracking-wide">{item.label}</span>
-                    </NavLink>
-                   ))}
-                 </>
-               )}
+               {filteredNavItems.length > 0 && filteredSystemItems.length > 0 && <div className={clsx("text-xs uppercase tracking-wider px-4 mb-2 mt-6", subHeaderClass)}>System</div>}
+               {filteredSystemItems.map((item) => (
+                 <NavLink key={item.path} to={item.path} onClick={handleNavClick} className={({ isActive }) => clsx('relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group', getActiveItemClass(isActive))}>
+                    <item.icon size={20} /> <span className="font-medium tracking-wide">{item.label}</span>
+                </NavLink>
+               ))}
 
-               {filteredLayoutItems.length > 0 && (
-                 <>
-                   <div className={clsx("text-xs uppercase tracking-wider px-4 mb-2 mt-6", subHeaderClass)}>Layout & UI</div>
-                   {filteredLayoutItems.map((item) => (
-                     <NavLink key={item.path} to={item.path} onClick={handleNavClick} className={({ isActive }) => clsx('relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group', getActiveItemClass(isActive))}>
-                        <item.icon size={20} /> <span className="font-medium tracking-wide">{item.label}</span>
-                    </NavLink>
-                   ))}
-                 </>
-               )}
+               {filteredLayoutItems.length > 0 && <div className={clsx("text-xs uppercase tracking-wider px-4 mb-2 mt-6", subHeaderClass)}>Layout & UI</div>}
+               {filteredLayoutItems.map((item) => (
+                 <NavLink key={item.path} to={item.path} onClick={handleNavClick} className={({ isActive }) => clsx('relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group', getActiveItemClass(isActive))}>
+                    <item.icon size={20} /> <span className="font-medium tracking-wide">{item.label}</span>
+                </NavLink>
+               ))}
             </nav>
 
-            {/* Down Indicator */}
             <div className={clsx("absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white dark:from-[#0a0a0a] to-transparent z-10 flex justify-center items-end transition-opacity duration-300 pointer-events-none", canScrollDown ? "opacity-100" : "opacity-0")}>
-                <button 
-                    onClick={() => scrollNav('down')} 
-                    className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-full shadow-sm border border-slate-200 dark:border-slate-800 mb-1 animate-bounce hover:bg-indigo-50 dark:hover:bg-indigo-900/50"
-                >
-                    <ChevronDown size={14} className="text-slate-500 dark:text-slate-400" />
-                </button>
+                <button onClick={() => scrollNav('down')} className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-full shadow-sm border border-slate-200 dark:border-slate-800 mb-1 animate-bounce hover:bg-indigo-50 dark:hover:bg-indigo-900/50"><ChevronDown size={14} className="text-slate-500 dark:text-slate-400" /></button>
             </div>
         </div>
 
-        {/* Footer */}
         <div className={clsx("p-4 border-t border-slate-200 dark:border-cyan-900/30 bg-slate-50 dark:bg-black/20 shrink-0")}>
           <div className={clsx("rounded-xl p-3 flex items-center justify-between gap-3 mb-3 border border-slate-200 dark:border-cyan-900/30 bg-white dark:bg-cyan-950/20")}>
               <div className="flex items-center gap-3 overflow-hidden">
@@ -200,23 +202,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
           </div>
 
           <div className="flex bg-slate-200 dark:bg-cyan-950/40 p-1 rounded-lg border border-slate-300 dark:border-cyan-900/30">
-              {[
-                  { id: 'light', icon: Sun },
-                  { id: 'system', icon: Monitor },
-                  { id: 'dark', icon: Moon }
-              ].map((opt) => (
-                  <button 
-                    key={opt.id}
-                    onClick={() => setMode(opt.id as any)}
-                    className={clsx(
-                        "flex-1 flex items-center justify-center py-1.5 rounded-md transition-all",
-                        mode === opt.id 
-                            ? "bg-white dark:bg-cyan-500 text-indigo-600 dark:text-black shadow-sm" 
-                            : "text-slate-500 dark:text-cyan-700 hover:text-indigo-600 dark:hover:text-cyan-400"
-                    )}
-                  >
-                      <opt.icon size={14} strokeWidth={3} />
-                  </button>
+              {[{ id: 'light', icon: Sun }, { id: 'system', icon: Monitor }, { id: 'dark', icon: Moon }].map((opt) => (
+                  <button key={opt.id} onClick={() => setMode(opt.id as any)} className={clsx("flex-1 flex items-center justify-center py-1.5 rounded-md transition-all", mode === opt.id ? "bg-white dark:bg-cyan-500 text-indigo-600 dark:text-black shadow-sm" : "text-slate-500 dark:text-cyan-700 hover:text-indigo-600 dark:hover:text-cyan-400")}><opt.icon size={14} strokeWidth={3} /></button>
               ))}
           </div>
 
