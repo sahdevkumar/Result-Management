@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, Database, User, UserPlus, BookOpen, ChevronDown, Briefcase, KeyRound, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, Database, User, UserPlus, BookOpen, ChevronDown, Briefcase, KeyRound, ArrowLeft, RefreshCw } from 'lucide-react';
 import { DataService } from '../services/dataService';
 import { useToast } from '../components/ToastContext';
 import { Subject, UserProfile } from '../types';
@@ -21,19 +21,22 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const [staffPost, setStaffPost] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetchingSubjects, setIsFetchingSubjects] = useState(false);
     const { showToast } = useToast();
 
     const fetchSubjectsData = async () => {
+        setIsFetchingSubjects(true);
         try {
             const subData = await DataService.getSubjects();
             setSubjects(subData);
-            // Auto-select first subject if none selected
-            if (subData.length > 0 && !selectedSubjectId) {
-                setSelectedSubjectId(subData[0].id);
+            if (subData.length === 0) {
+                console.warn("Subject list returned empty from database.");
             }
         } catch (e) {
             console.error("Failed to load subject data for signup", e);
-            showToast("Warning: Could not load subject list. Check database permissions.", "error");
+            showToast("Connection error: Could not load subject list.", "error");
+        } finally {
+            setIsFetchingSubjects(false);
         }
     };
 
@@ -47,6 +50,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             fetchSubjectsData();
         }
     }, [mode]);
+
+    // Auto-select first subject when list populates
+    useEffect(() => {
+        if (subjects.length > 0 && !selectedSubjectId) {
+            setSelectedSubjectId(subjects[0].id);
+        }
+    }, [subjects, selectedSubjectId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -182,21 +192,36 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
                                         {role === 'Teacher' && (
                                             <div className={clsx(styles.inputGroup, "animate-in fade-in slide-in-from-top-2 duration-300")}>
-                                                <label className={styles.label}>Assigned Subject</label>
+                                                <div className="flex justify-between items-center ml-1 mb-1">
+                                                    <label className={styles.label}>Assigned Subject</label>
+                                                    {isFetchingSubjects && <Loader2 size={10} className="animate-spin text-cyan-500" />}
+                                                </div>
                                                 <div className={styles.inputWrapper}>
                                                     <div className={styles.inputIcon}><BookOpen size={18} /></div>
                                                     <select 
-                                                        className={clsx(styles.input, "appearance-none cursor-pointer")} 
+                                                        className={clsx(styles.input, "appearance-none cursor-pointer", subjects.length === 0 && "opacity-60")} 
                                                         value={selectedSubjectId} 
                                                         onChange={(e) => setSelectedSubjectId(e.target.value)} 
                                                         required={role === 'Teacher'}
+                                                        disabled={isFetchingSubjects || subjects.length === 0}
                                                     >
-                                                        <option value="" disabled>Choose subject...</option>
+                                                        <option value="" disabled>{isFetchingSubjects ? 'Loading subjects...' : 'Choose subject...'}</option>
                                                         {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
                                                     </select>
                                                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-cyan-800"><ChevronDown size={18} /></div>
                                                 </div>
-                                                {subjects.length === 0 && <p className="text-[10px] text-amber-600 font-bold ml-1">No subjects found in database.</p>}
+                                                {subjects.length === 0 && !isFetchingSubjects && (
+                                                    <div className="flex flex-col gap-1.5 mt-2 p-3 rounded-xl bg-red-50/5 dark:bg-red-950/10 border border-red-500/20">
+                                                        <p className="text-[10px] text-red-500 font-bold">Subject list is empty. Contact administrator.</p>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={fetchSubjectsData}
+                                                            className="text-[9px] font-black uppercase tracking-tighter text-cyan-500 flex items-center gap-1 hover:text-cyan-400 transition-colors w-fit"
+                                                        >
+                                                            <RefreshCw size={10} /> Sync Now
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
