@@ -111,7 +111,7 @@ export const UserManagement: React.FC = () => {
                 mobile: userFormData.mobile,
                 role: userFormData.role,
                 assigned_subject_id: userFormData.subjectId || null,
-                assigned_class_id: userFormData.classId || null,
+                // Removed assigned_class_id to avoid schema error
                 staff_post: userFormData.staffPost || null
             });
             showToast(`User ${userFormData.name} updated successfully`, "success");

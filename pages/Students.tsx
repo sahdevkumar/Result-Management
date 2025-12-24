@@ -1,12 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { DataService } from '../services/dataService';
-import { Student, StudentStatus, SchoolClass } from '../types';
+import { Student, StudentStatus, SchoolClass, UserProfile } from '../types';
 import { Search, Plus, Filter, Trash2, X, RefreshCw, Pencil, Loader2, AlertTriangle, Upload, FileDown, FileSpreadsheet, GraduationCap, Eye, User, Phone, Shield, Calendar } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
+import { useOutletContext } from 'react-router-dom';
 import clsx from 'clsx';
 
 export const Students: React.FC = () => {
+  const { user, permissions } = useOutletContext<{ user: UserProfile, permissions: Record<string, string[]> | null }>();
+  
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +29,22 @@ export const Students: React.FC = () => {
   const [importClassId, setImportClassId] = useState<string>('');
   const [previewStudent, setPreviewStudent] = useState<Student | null>(null);
   const { showToast } = useToast();
+
+  // Helper to check permissions with backward compatibility
+  const hasPermission = (permId: string) => {
+      if (user.role === 'Super Admin') return true;
+      if (!permissions) {
+          // Fallback policies if permission matrix isn't loaded (e.g. legacy DB)
+          if (user.role === 'Principal' || user.role === 'Admin') return true;
+          if (user.role === 'Office Staff' && permId !== 'student_delete') return true;
+          return false;
+      }
+      return permissions[user.role]?.includes(permId) ?? false;
+  };
+
+  const canAdd = hasPermission('student_add');
+  const canEdit = hasPermission('student_edit');
+  const canDelete = hasPermission('student_delete');
 
   useEffect(() => { loadData(); }, []);
 
@@ -118,7 +137,12 @@ export const Students: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div><h1 className="text-2xl font-bold text-slate-800 dark:text-white">Student Directory</h1><p className="text-slate-500 dark:text-slate-400 text-sm">Manage student profiles and enrollment status</p></div>
-        <div className="flex gap-2"><button onClick={() => { setShowImportModal(true); setImportClassId(''); }} className="flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm"><Upload size={18} /><span className="hidden sm:inline">Import CSV</span></button><button onClick={handleAddNew} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm shadow-indigo-500/20"><Plus size={18} /><span>Add Student</span></button></div>
+        {canAdd && (
+            <div className="flex gap-2">
+                <button onClick={() => { setShowImportModal(true); setImportClassId(''); }} className="flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm"><Upload size={18} /><span className="hidden sm:inline">Import CSV</span></button>
+                <button onClick={handleAddNew} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-sm shadow-indigo-500/20"><Plus size={18} /><span>Add Student</span></button>
+            </div>
+        )}
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm dark:shadow-none border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -147,7 +171,17 @@ export const Students: React.FC = () => {
                     <td className="px-6 py-3"><span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold rounded">{student.className}-{student.section}</span></td>
                     <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-300">{student.guardianName}</td>
                     <td className="px-6 py-3"><span className={clsx("px-2.5 py-1 rounded-full text-xs font-medium", student.status === StudentStatus.Active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400")}>{student.status}</span></td>
-                    <td className="px-6 py-3 text-right"><div className="flex justify-end gap-2"><button onClick={() => setPreviewStudent(student)} title="Profile Preview" className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><Eye size={18} /></button><button onClick={() => handleEdit(student)} title="Edit Student" className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><Pencil size={18} /></button><button onClick={() => handleDeleteClick(student)} title="Delete Student" className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"><Trash2 size={18} /></button></div></td>
+                    <td className="px-6 py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setPreviewStudent(student)} title="Profile Preview" className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><Eye size={18} /></button>
+                            {canEdit && (
+                                <button onClick={() => handleEdit(student)} title="Edit Student" className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><Pencil size={18} /></button>
+                            )}
+                            {canDelete && (
+                                <button onClick={() => handleDeleteClick(student)} title="Delete Student" className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"><Trash2 size={18} /></button>
+                            )}
+                        </div>
+                    </td>
                   </tr>
                 ))
               )}

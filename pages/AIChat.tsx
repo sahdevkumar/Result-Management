@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements J
 
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_class_id TEXT;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_subject_id TEXT;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS staff_post TEXT;
 
 ALTER TABLE system_users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE subjects DISABLE ROW LEVEL SECURITY;

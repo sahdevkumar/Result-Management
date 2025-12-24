@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements J
 -- 2. APPLY SCHEMA MIGRATIONS (IF COLUMNS ARE MISSING)
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_class_id TEXT;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_subject_id TEXT;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS staff_post TEXT;
 
 -- 3. DISABLE RLS (REQUIRED FOR CLIENT-SIDE OPERATION)
 ALTER TABLE system_users DISABLE ROW LEVEL SECURITY;
@@ -119,14 +122,15 @@ INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellenc
                 await DataService.signUp({
                     email, password, name: fullName, role,
                     subjectId: role === 'Teacher' ? selectedSubjectId : undefined,
-                    staffPost: role === 'Office Staff' ? staffPost : undefined
+                    staffPost: role === 'Office Staff' ? staffPost : undefined,
+                    classId: role === 'Teacher' ? null : undefined // Only define classId if you have a class selector, but user table needs column regardless
                 });
                 showToast("Account created! Contact admin to activate.", "success");
                 setMode('login');
             }
         } catch (err: any) {
             showToast(err.message || "Operation failed", "error");
-            if (err.message?.includes('RLS') || err.message?.includes('PERMISSION')) {
+            if (err.message?.includes('RLS') || err.message?.includes('PERMISSION') || err.message?.includes('assigned_class_id')) {
                 setMode('diagnostics');
             }
         } finally {
@@ -170,9 +174,9 @@ INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellenc
                                 <div className="flex items-start gap-4 p-5 bg-red-50 dark:bg-red-950/20 rounded-2xl border border-red-200 dark:border-red-900/30">
                                     <ServerCrash size={32} className="text-red-500 shrink-0 mt-1" />
                                     <div>
-                                        <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-1">Row Level Security (RLS) Alert</h4>
+                                        <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-1">Database Schema Alert</h4>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                            Supabase has blocked the request. You must either create security policies or disable RLS for your tables to allow this application to function.
+                                            The application detected missing columns or permissions. This usually happens if the database was created with an older version of the schema.
                                         </p>
                                     </div>
                                 </div>

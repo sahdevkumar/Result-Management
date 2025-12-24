@@ -67,7 +67,7 @@ const Layout: React.FC<{ user: UserProfile, matrix: Record<string, string[]> | n
       </div>
       <main className={clsx("flex-1 p-4 lg:p-8 overflow-y-auto h-screen transition-all duration-300", "lg:ml-72", "pt-20 lg:pt-8", "print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:static print-reset")}>
         <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:p-0 print:m-0">
-            <AccessGuard user={user} matrix={matrix}><Outlet context={{ user }} /></AccessGuard>
+            <AccessGuard user={user} matrix={matrix}><Outlet context={{ user, permissions: matrix }} /></AccessGuard>
         </div>
       </main>
     </div>

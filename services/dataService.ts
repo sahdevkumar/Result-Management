@@ -4,7 +4,17 @@ import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolCl
 
 const SESSION_KEY = 'unacademy_db_session';
 
-const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+// Robust UUID v4 generator to fix "invalid input syntax for type uuid"
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 const mapStudent = (s: any): Student => ({
   id: s.id,
@@ -76,9 +86,12 @@ const mapNonAcademic = (n: any): NonAcademicRecord => ({
 
 export const DataService = {
   signIn: async (email: string, password: string): Promise<UserProfile> => {
-    if (email === 'admin@unacademy.com' && password === 'admin123') {
+    // Normalize email to lowercase for case-insensitive login
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (normalizedEmail === 'admin@unacademy.com' && password === 'admin123') {
        const demoUser: UserProfile = {
-         id: 'demo-admin-id',
+         id: '00000000-0000-0000-0000-000000000000', // Valid UUID for admin
          fullName: 'Master Admin',
          email: 'admin@unacademy.com',
          role: 'Super Admin',
@@ -91,7 +104,7 @@ export const DataService = {
     const { data: profile, error } = await supabase
       .from('system_users')
       .select('*')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .eq('password', password)
       .maybeSingle();
 
@@ -111,8 +124,7 @@ export const DataService = {
       email: profile.email,
       role: profile.role,
       status: profile.status,
-      assignedSubjectId: profile.assigned_subject_id,
-      assignedClassId: profile.assigned_class_id
+      assignedSubjectId: profile.assigned_subject_id
     };
 
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
@@ -120,26 +132,39 @@ export const DataService = {
   },
 
   signUp: async (user: any) => {
-    const { data: existing, error: existErr } = await supabase.from('system_users').select('id').eq('email', user.email).maybeSingle();
-    if (existErr && existErr.code === '42501') throw new Error("PERMISSION_DENIED: RLS prevents checking existing users.");
-    if (existing) throw new Error("An account with this email already exists.");
+    // 1. Normalize email (case-insensitive check)
+    const normalizedEmail = user.email.toLowerCase().trim();
 
+    // 2. Validate User Existence
+    const { data: existing, error: existErr } = await supabase
+        .from('system_users')
+        .select('id, email')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+    
+    if (existErr && existErr.code === '42501') throw new Error("PERMISSION_DENIED: RLS prevents checking existing users.");
+    if (existing) throw new Error(`VALIDATION_ERROR: An account with ${normalizedEmail} already exists.`);
+
+    // 3. Generate Valid UUID
     const userId = generateId();
+    
+    // 4. Insert Record (store email as lowercase)
     const { error: dbError } = await supabase.from('system_users').insert({
         id: userId,
         full_name: user.name,
-        email: user.email,
+        email: normalizedEmail,
         mobile: user.mobile || '',
         role: user.role,
         password: user.password,
         assigned_subject_id: user.subjectId || null,
-        assigned_class_id: user.classId || null,
         staff_post: user.staffPost || user.staff_post || null,
         status: 'Locked' 
     });
     
     if (dbError) {
         if (dbError.code === '42501') throw new Error("PERMISSION_DENIED: Cannot register. RLS is enabled on 'system_users'.");
+        if (dbError.message?.includes('invalid input syntax for type uuid')) throw new Error("DB_SCHEMA_MISMATCH: The database expects a UUID. ID generation logic updated.");
+        if (dbError.message?.includes('unique constraint')) throw new Error("VALIDATION_ERROR: User email already exists.");
         throw new Error(`REGISTRATION_FAILED: ${dbError.message}`);
     }
   },
@@ -158,7 +183,7 @@ export const DataService = {
     
     try {
         const cachedUser = JSON.parse(session);
-        if (cachedUser.id === 'demo-admin-id') return cachedUser;
+        if (cachedUser.id === '00000000-0000-0000-0000-000000000000' || cachedUser.id === 'demo-admin-id') return cachedUser;
 
         const { data: profile, error } = await supabase
           .from('system_users')
@@ -177,8 +202,7 @@ export const DataService = {
           email: profile.email,
           role: profile.role,
           status: profile.status,
-          assignedSubjectId: profile.assigned_subject_id,
-          assignedClassId: profile.assigned_class_id
+          assignedSubjectId: profile.assigned_subject_id
         };
     } catch (e) {
         return null;
@@ -187,8 +211,11 @@ export const DataService = {
 
   seedInitialData: async () => {
     try {
+        // Use a valid UUID for the demo admin
+        const demoAdminId = '00000000-0000-0000-0000-000000000000';
+        
         await supabase.from('system_users').upsert({
-            id: 'demo-admin-id',
+            id: demoAdminId,
             full_name: 'Master Admin',
             email: 'admin@unacademy.com',
             password: 'admin123',
@@ -220,7 +247,6 @@ export const DataService = {
 
         await supabase.from('exam_types').upsert([{ name: 'Unit Test' }, { name: 'Final Exam' }], { onConflict: 'name' });
 
-        // Seed basic school config
         await supabase.from('school_config').upsert({
             id: 1,
             name: 'UNACADEMY',
@@ -275,7 +301,6 @@ export const DataService = {
       .upsert(dbRecord, { onConflict: 'id' });
       
     if (error) {
-        // Prevent [object Object] by logging and throwing the message string
         console.error("DATA_SERVICE_UPSERT_ERROR:", error.message || error);
         
         if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions'))) {

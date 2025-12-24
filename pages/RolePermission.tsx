@@ -7,7 +7,7 @@ import {
   ShieldAlert, Fingerprint, Activity, Database, Loader2,
   LayoutDashboard, FileText, MessageSquareQuote, CreditCard,
   BarChart3, Printer, Palette, UserCog, BookOpen, GraduationCap,
-  Bookmark, Terminal, Copy, Check
+  Bookmark, Terminal, Copy, Check, UserPlus, Trash2, Edit
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DataService } from '../services/dataService';
@@ -18,7 +18,7 @@ type SystemRole = 'Super Admin' | 'Principal' | 'Admin' | 'Teacher' | 'Office St
 interface Permission {
   id: string;
   name: string;
-  category: 'Navigation' | 'Academic Entry' | 'Reports & Output' | 'System' | 'Security';
+  category: 'Navigation' | 'Academic Entry' | 'Reports & Output' | 'System' | 'Security' | 'Student Management';
   description: string;
   icon: React.ElementType;
 }
@@ -27,6 +27,11 @@ const SYSTEM_PERMISSIONS: Permission[] = [
   { id: 'nav_dashboard', name: 'Dashboard Access', category: 'Navigation', description: 'View system overview and statistics', icon: LayoutDashboard },
   { id: 'nav_students', name: 'Student Directory', category: 'Navigation', description: 'Access student records and profiles', icon: Users },
   { id: 'nav_exams', name: 'Exam Management', category: 'Navigation', description: 'View and schedule examinations', icon: FileText },
+  
+  { id: 'student_add', name: 'Add Student', category: 'Student Management', description: 'Register new students or import CSV', icon: UserPlus },
+  { id: 'student_edit', name: 'Edit Student', category: 'Student Management', description: 'Modify student profile details', icon: Edit },
+  { id: 'student_delete', name: 'Delete Student', category: 'Student Management', description: 'Remove student records permanently', icon: Trash2 },
+
   { id: 'entry_marks', name: 'Marks Entry', category: 'Academic Entry', description: 'Input and edit student exam scores', icon: PenTool },
   { id: 'entry_remarks', name: "Teacher's Remark", category: 'Academic Entry', description: 'Add qualitative feedback for subjects', icon: MessageSquareQuote },
   { id: 'entry_non_academic', name: 'Non-Academic Entry', category: 'Academic Entry', description: 'Grade behavior and participation', icon: Activity },
@@ -45,12 +50,16 @@ const INITIAL_ROLE_MAP: Record<SystemRole, string[]> = {
   'Principal': SYSTEM_PERMISSIONS.map(p => p.id),
   'Admin': SYSTEM_PERMISSIONS.filter(p => !['sec_roles', 'sec_audit'].includes(p.id)).map(p => p.id),
   'Teacher': ['nav_dashboard', 'nav_students', 'entry_marks', 'entry_remarks', 'entry_non_academic', 'output_scorecard', 'output_reports'],
-  'Office Staff': ['nav_dashboard', 'nav_students', 'nav_exams', 'output_scorecard', 'output_print'],
+  'Office Staff': ['nav_dashboard', 'nav_students', 'student_add', 'student_edit', 'nav_exams', 'output_scorecard', 'output_print'],
 };
 
 const SQL_FIX = `-- RUN THIS IN SUPABASE SQL EDITOR
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_class_id TEXT;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_subject_id TEXT;
+ALTER TABLE system_users ADD COLUMN IF NOT EXISTS staff_post TEXT;
+
 -- Ensure record 1 exists
 INSERT INTO school_config (id, name, tagline) 
 VALUES (1, 'UNACADEMY', 'Excellence in Education') 
@@ -72,7 +81,21 @@ export const RolePermission: React.FC = () => {
             const info = await DataService.getSchoolInfo();
             setSchoolInfo(info);
             if (info.role_permissions) {
-                setRoleMap(info.role_permissions as any);
+                // Merge loaded permissions with defaults to ensure new keys exist
+                const loadedMap = info.role_permissions as Record<SystemRole, string[]>;
+                const mergedMap = { ...INITIAL_ROLE_MAP };
+                
+                (Object.keys(loadedMap) as SystemRole[]).forEach(role => {
+                    // Start with what's in DB
+                    let perms = loadedMap[role] || [];
+                    // If it's Super Admin, force all
+                    if (role === 'Super Admin') {
+                        perms = SYSTEM_PERMISSIONS.map(p => p.id);
+                    }
+                    mergedMap[role] = perms;
+                });
+                
+                setRoleMap(mergedMap);
             }
         } catch (e) {
             showToast("Failed to load permissions from server.", "error");
@@ -138,7 +161,14 @@ export const RolePermission: React.FC = () => {
       }
   };
 
-  const categories = Array.from(new Set(SYSTEM_PERMISSIONS.map(p => p.category)));
+  // Group permissions by category for display
+  const groupedPermissions = SYSTEM_PERMISSIONS.reduce((acc, perm) => {
+    if (!acc[perm.category]) acc[perm.category] = [];
+    acc[perm.category].push(perm);
+    return acc;
+  }, {} as Record<string, Permission[]>);
+
+  const categoryOrder = ['Navigation', 'Student Management', 'Academic Entry', 'Reports & Output', 'System', 'Security'];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -213,20 +243,21 @@ export const RolePermission: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {categories.map(category => (
+                {categoryOrder.map(category => (
                   <React.Fragment key={category}>
                     <tr className="bg-slate-50/50 dark:bg-slate-900/50">
                         <td colSpan={6} className="px-6 py-2 border-y border-slate-100 dark:border-slate-800">
                             <span className="text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.2em]">{category}</span>
                         </td>
                     </tr>
-                    {SYSTEM_PERMISSIONS.filter(p => p.category === category).map(perm => (
+                    {(groupedPermissions[category] || []).map(perm => (
                       <tr key={perm.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors group">
                         <td className="p-6">
                             <div className="flex items-start gap-4">
                                 <div className={clsx(
                                     "p-2.5 rounded-xl shadow-sm border shrink-0",
                                     perm.category === 'Navigation' ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30" :
+                                    perm.category === 'Student Management' ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30" :
                                     perm.category === 'Academic Entry' ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30" :
                                     perm.category === 'Reports & Output' ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30" :
                                     perm.category === 'Security' ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/30" :
@@ -270,6 +301,7 @@ export const RolePermission: React.FC = () => {
           </div>
       </div>
 
+      {/* Footer Security Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-indigo-950 dark:bg-black rounded-3xl p-8 text-white shadow-xl shadow-indigo-200 dark:shadow-none flex gap-6 border-l-8 border-indigo-600">
             <div className="p-4 bg-white/10 rounded-2xl h-fit backdrop-blur-md">
@@ -278,7 +310,7 @@ export const RolePermission: React.FC = () => {
             <div>
                 <h4 className="font-black text-xl uppercase tracking-tight mb-2">Policy Governance</h4>
                 <p className="text-sm text-indigo-200/80 leading-relaxed">
-                    Changes to the permission matrix are applied globally to all users assigned to a specific role. <b>Super Admin</b> permissions are immutable to prevent system lockouts and ensure root-level maintenance is always available.
+                    Changes to the permission matrix are applied globally. <b>Super Admin</b> permissions are immutable to prevent system lockouts. Ensure "Student Management" rights are only assigned to authorized personnel to prevent data loss.
                 </p>
             </div>
           </div>
