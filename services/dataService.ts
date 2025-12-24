@@ -272,7 +272,10 @@ export const DataService = {
   getSchoolInfo: async () => {
     const { data, error } = await supabase.from('school_config').select('*').eq('id', 1).maybeSingle();
     if (error || !data) {
-      return { name: 'ACADEMIC SYSTEM', tagline: 'Excellence in Education', logo: '', watermark: '', icon: '', scorecard_layout: null, role_permissions: null, fullLogo: '' };
+      return { 
+          name: 'ACADEMIC SYSTEM', tagline: 'Excellence in Education', logo: '', watermark: '', icon: '', 
+          scorecard_layout: null, role_permissions: null, fullLogo: '', academicSession: '2024-2025' 
+      };
     }
     return {
       name: data.name,
@@ -282,11 +285,12 @@ export const DataService = {
       icon: data.icon_url,
       scorecard_layout: data.scorecard_layout,
       role_permissions: data.role_permissions,
-      fullLogo: data.full_logo_url
+      fullLogo: data.full_logo_url,
+      academicSession: data.academic_session || '2024-2025'
     };
   },
 
-  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, icon?: string, scorecard_layout?: any, role_permissions?: any, fullLogo?: string }) => {
+  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, icon?: string, scorecard_layout?: any, role_permissions?: any, fullLogo?: string, academicSession?: string }) => {
     const dbRecord = {
       id: 1, 
       name: info.name || 'ACADEMIC SYSTEM',
@@ -295,6 +299,7 @@ export const DataService = {
       watermark_url: info.watermark || '',
       icon_url: info.icon || '',
       full_logo_url: info.fullLogo || '',
+      academic_session: info.academicSession || '2024-2025',
       scorecard_layout: info.scorecard_layout || null,
       role_permissions: info.role_permissions || null,
       updated_at: new Date().toISOString()
@@ -307,7 +312,7 @@ export const DataService = {
     if (error) {
         console.error("DATA_SERVICE_UPSERT_ERROR:", error.message || error);
         
-        if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions') || error.message?.includes('full_logo_url'))) {
+        if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions') || error.message?.includes('full_logo_url') || error.message?.includes('academic_session'))) {
             throw new Error(`DATABASE_SCHEMA_OUT_OF_DATE: Missing columns in 'school_config' table. Please run the SQL fix in Login > Diagnostics.`);
         }
         throw new Error(error.message || "Failed to update school configuration.");

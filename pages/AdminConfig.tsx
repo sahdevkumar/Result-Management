@@ -2,20 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
 import { useToast } from '../components/ToastContext';
-import { Save, Upload, School, Image as ImageIcon, Loader2, Type, Building2, Eye, X, Terminal, Check, Copy } from 'lucide-react';
+import { Save, Upload, School, Image as ImageIcon, Loader2, Type, Building2, Eye, X, Terminal, Check, Copy, CalendarRange } from 'lucide-react';
 import clsx from 'clsx';
 
 const SQL_FIX = `ALTER TABLE school_config ADD COLUMN IF NOT EXISTS full_logo_url TEXT;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS icon_url TEXT;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS academic_session TEXT;
 
 -- Create templates table if missing
 CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements JSONB, width INTEGER, height INTEGER, created_at TIMESTAMPTZ DEFAULT NOW());
 ALTER TABLE templates DISABLE ROW LEVEL SECURITY;`;
 
 export const AdminConfig: React.FC = () => {
-  const [schoolInfo, setSchoolInfo] = useState({ name: '', tagline: '', logo: '', watermark: '', icon: '', fullLogo: '' });
+  const [schoolInfo, setSchoolInfo] = useState({ name: '', tagline: '', logo: '', watermark: '', icon: '', fullLogo: '', academicSession: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -78,7 +79,7 @@ export const AdminConfig: React.FC = () => {
           setTimeout(() => window.location.reload(), 1000);
       } catch (e: any) {
           const errMsg = e.message || "";
-          if (errMsg.includes('DATABASE_SCHEMA_OUT_OF_DATE') || errMsg.includes('full_logo_url')) {
+          if (errMsg.includes('DATABASE_SCHEMA_OUT_OF_DATE') || errMsg.includes('full_logo_url') || errMsg.includes('academic_session')) {
               setShowSqlFix(true);
               showToast("Schema Repair Required: Missing database columns.", "error");
           } else {
@@ -125,7 +126,7 @@ export const AdminConfig: React.FC = () => {
                   <div className="flex-1">
                       <h3 className="text-lg font-black text-red-600 dark:text-red-400 uppercase tracking-tight">Database Repair Required</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-                          The system detected missing columns (e.g. <code>full_logo_url</code>) in your Supabase table. Copy the script below and run it in your Supabase SQL Editor.
+                          The system detected missing columns (e.g. <code>academic_session</code>) in your Supabase table. Copy the script below and run it in your Supabase SQL Editor.
                       </p>
                   </div>
                   <button onClick={handleCopySql} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg shadow-red-200 dark:shadow-none">
@@ -158,6 +159,32 @@ export const AdminConfig: React.FC = () => {
                       <p className="text-[10px] text-slate-400 mt-2 ml-1">Displayed on reports, headers, and official documents.</p>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Academic Session</label>
+                          <div className="relative">
+                              <input 
+                                type="text" 
+                                className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
+                                placeholder="e.g. 2024-2025"
+                                value={schoolInfo.academicSession || ''}
+                                onChange={(e) => setSchoolInfo({ ...schoolInfo, academicSession: e.target.value })}
+                              />
+                              <CalendarRange className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Tagline</label>
+                          <input 
+                            type="text" 
+                            className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
+                            placeholder="e.g. Est. 1990"
+                            value={schoolInfo.tagline}
+                            onChange={(e) => setSchoolInfo({ ...schoolInfo, tagline: e.target.value })}
+                          />
+                      </div>
+                  </div>
+
                   <div>
                       <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Brand Wordmark / Wide Logo</label>
                       {schoolInfo.fullLogo ? (
@@ -183,17 +210,6 @@ export const AdminConfig: React.FC = () => {
                               />
                           </div>
                       )}
-                  </div>
-
-                  <div>
-                      <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Tagline / Motto</label>
-                      <input 
-                        type="text" 
-                        className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
-                        placeholder="e.g. Excellence in Education"
-                        value={schoolInfo.tagline}
-                        onChange={(e) => setSchoolInfo({ ...schoolInfo, tagline: e.target.value })}
-                      />
                   </div>
               </div>
           </div>
@@ -241,7 +257,7 @@ export const AdminConfig: React.FC = () => {
                               <Loader2 className="animate-spin text-indigo-500" size={32} />
                           ) : schoolInfo.watermark ? (
                               <>
-                                <img src={schoolInfo.watermark} alt="Watermark" className="w-full h-full object-contain p-4 opacity-50 grayscale" />
+                                <img src={schoolInfo.watermark} alt="Watermark" className="w-full h-full object-contain p-4 opacity-50" />
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <span className="text-white text-xs font-bold">Click to Change</span>
                                 </div>

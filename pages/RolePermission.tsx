@@ -59,6 +59,7 @@ ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS icon_url TEXT;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS full_logo_url TEXT;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS academic_session TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_class_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_subject_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS staff_post TEXT;

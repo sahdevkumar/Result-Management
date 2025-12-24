@@ -1,5 +1,4 @@
 
-// ... existing imports ...
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Printer, Loader2, CheckSquare, Square, FileText, Users, Search, Maximize2, Layout
@@ -9,13 +8,11 @@ import { DataService } from '../services/dataService';
 import { Student, Exam, SchoolClass, Subject, SavedTemplate, DesignElement } from '../types';
 import clsx from 'clsx';
 
-// ... existing component logic ...
 type PrintTab = 'single' | 'bulk';
 type PaperSize = 'A4' | 'Letter';
 type Orientation = 'portrait' | 'landscape';
 
 export const PrintReport: React.FC = () => {
-  // ... (existing state) ...
   const [activeTab, setActiveTab] = useState<PrintTab>('single');
   const { showToast } = useToast();
   
@@ -25,6 +22,7 @@ export const PrintReport: React.FC = () => {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [schoolInfo, setSchoolInfo] = useState<{ watermark: string }>({ watermark: '' });
   const [loading, setLoading] = useState(true);
 
   // Configuration
@@ -48,23 +46,24 @@ export const PrintReport: React.FC = () => {
   const [previewElements, setPreviewElements] = useState<DesignElement[]>([]);
   const [previewSize, setPreviewSize] = useState({ width: 794, height: 1123 });
 
-  // ... (existing effects and handlers unchanged) ...
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [e, c, s, sub, tmpls] = await Promise.all([
+        const [e, c, s, sub, tmpls, info] = await Promise.all([
           DataService.getExams(),
           DataService.getClasses(),
           DataService.getStudents(),
           DataService.getSubjects(),
-          DataService.getTemplates()
+          DataService.getTemplates(),
+          DataService.getSchoolInfo()
         ]);
         setExams(e);
         setClasses(c);
         setStudents(s);
         setSubjects(sub);
         setSavedTemplates(tmpls);
+        setSchoolInfo({ watermark: info.watermark || '' });
         
         // Defaults
         if (e.length > 0) setExamId(e[0].id);
@@ -164,6 +163,42 @@ export const PrintReport: React.FC = () => {
     } else {
       setSelectedStudentIds(new Set(filteredStudents.map(s => s.id)));
     }
+  };
+
+  const renderElement = (el: DesignElement) => {
+      if (el.type === 'text') {
+          return (
+            <div style={{ 
+                fontSize: `${el.style.fontSize}px`, 
+                fontFamily: el.style.fontFamily, 
+                color: el.style.color, 
+                fontWeight: el.style.fontWeight, 
+                fontStyle: el.style.fontStyle, 
+                textDecoration: el.style.textDecoration, 
+                textAlign: el.style.textAlign as any, 
+                lineHeight: el.style.lineHeight, 
+                letterSpacing: `${el.style.letterSpacing}px`, 
+                whiteSpace: 'pre-wrap', 
+                wordBreak: 'break-word', 
+                width: '100%', 
+                height: '100%' 
+            }}>
+                {el.content}
+            </div>
+          );
+      } else if (el.type === 'image') {
+          return <img src={el.content} alt="element" className="w-full h-full object-contain" />;
+      } else if (el.type === 'watermark') {
+          // Fallback to system watermark if content is empty (for ScoreCard saved layouts)
+          const src = el.content || schoolInfo.watermark;
+          if (!src) return null;
+          return (
+            <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                <img src={src} alt="watermark" className="w-full h-full object-contain" />
+            </div>
+          );
+      }
+      return null;
   };
 
   return (
@@ -361,27 +396,7 @@ export const PrintReport: React.FC = () => {
                                     zIndex: el.type === 'watermark' ? 0 : 10
                                 }}
                             >
-                                {el.type === 'text' ? (
-                                    <div style={{ 
-                                        fontSize: `${el.style.fontSize}px`, 
-                                        fontFamily: el.style.fontFamily, 
-                                        color: el.style.color, 
-                                        fontWeight: el.style.fontWeight, 
-                                        fontStyle: el.style.fontStyle, 
-                                        textDecoration: el.style.textDecoration, 
-                                        textAlign: el.style.textAlign as any, 
-                                        lineHeight: el.style.lineHeight, 
-                                        letterSpacing: `${el.style.letterSpacing}px`, 
-                                        whiteSpace: 'pre-wrap', 
-                                        wordBreak: 'break-word', 
-                                        width: '100%', 
-                                        height: '100%' 
-                                    }}>
-                                        {el.content}
-                                    </div>
-                                ) : ( 
-                                    <img src={el.content} alt="preview element" className="w-full h-full object-contain" /> 
-                                )}
+                                {renderElement(el)}
                             </div>
                         ))}
                     </div>
@@ -416,27 +431,7 @@ export const PrintReport: React.FC = () => {
                             zIndex: el.type === 'watermark' ? 0 : 10
                         }}
                     >
-                        {el.type === 'text' ? (
-                            <div style={{ 
-                                fontSize: `${el.style.fontSize}px`, 
-                                fontFamily: el.style.fontFamily, 
-                                color: el.style.color, 
-                                fontWeight: el.style.fontWeight, 
-                                fontStyle: el.style.fontStyle, 
-                                textDecoration: el.style.textDecoration, 
-                                textAlign: el.style.textAlign as any, 
-                                lineHeight: el.style.lineHeight, 
-                                letterSpacing: `${el.style.letterSpacing}px`, 
-                                whiteSpace: 'pre-wrap', 
-                                wordBreak: 'break-word', 
-                                width: '100%', 
-                                height: '100%' 
-                            }}>
-                                {el.content}
-                            </div>
-                        ) : ( 
-                            <img src={el.content} alt="print element" className="w-full h-full object-contain" /> 
-                        )}
+                        {renderElement(el)}
                     </div>
                 ))}
               </div>
