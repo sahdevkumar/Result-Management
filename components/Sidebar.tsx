@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, FileText, BarChart3, Settings, LogOut, 
   PenTool, X, Wifi, WifiOff, Palette, Printer, CreditCard, 
   MessageSquareQuote, GraduationCap, Activity, ShieldCheck, UserCircle, UserCog,
-  Sun, Moon, Monitor, ChevronUp, ChevronDown, Sparkles
+  Sun, Moon, Monitor, ChevronUp, ChevronDown, Sparkles, Building2
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { useTheme } from './ThemeContext';
@@ -18,6 +18,9 @@ interface SidebarProps {
   onLogout: () => void;
   user: UserProfile;
   permissionMatrix: Record<string, string[]> | null;
+  schoolName?: string;
+  schoolIcon?: string;
+  schoolFullLogo?: string;
 }
 
 const PATH_TO_ID: Record<string, string> = {
@@ -32,6 +35,7 @@ const PATH_TO_ID: Record<string, string> = {
   '/print': 'output_print',
   '/templates': 'design_templates',
   '/settings': 'config_settings',
+  '/admin-config': 'sys_branding',
   '/roles': 'sec_roles',
   '/users': 'sec_users',
   '/chat': 'nav_chat'
@@ -59,7 +63,7 @@ export const canAccessPath = (path: string, role: string, matrix: Record<string,
   }
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onLogout, user, permissionMatrix }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onLogout, user, permissionMatrix, schoolName, schoolIcon, schoolFullLogo }) => {
   const location = useLocation();
   const { mode, setMode } = useTheme();
   const navRef = useRef<HTMLDivElement>(null);
@@ -82,6 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
   const systemItems = [
     { icon: ShieldCheck, label: 'Role & Permission', path: '/roles' },
     { icon: UserCog, label: 'User Management', path: '/users' },
+    { icon: Building2, label: 'Admin Config', path: '/admin-config' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 
@@ -142,13 +147,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
 
       <div className={clsx("h-screen w-72 flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 lg:translate-x-0 shadow-2xl print:hidden", sidebarBg, isOpen ? "translate-x-0" : "-translate-x-full")}>
         <div className="p-8 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className={clsx("w-10 h-10 rounded-xl flex items-center justify-center transition-all", logoBg)}>
-                <GraduationCap size={24} />
+          <div className="flex items-center gap-3 w-full">
+            <div className={clsx("w-10 h-10 flex items-center justify-center transition-all overflow-hidden rounded-xl shrink-0", !schoolIcon && logoBg)}>
+                {schoolIcon ? (
+                    <img src={schoolIcon} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                    <GraduationCap size={24} />
+                )}
             </div>
-            <div>
-                <h1 className={clsx("text-xl font-bold tracking-tight leading-none text-slate-800 dark:text-cyan-400")}>Unacademy</h1>
-                <span className={clsx("text-[10px] uppercase tracking-widest font-semibold opacity-70")}>Admin Portal</span>
+            <div className="overflow-hidden flex-1">
+                {schoolFullLogo ? (
+                    <img src={schoolFullLogo} alt={schoolName} className="h-8 object-contain object-left max-w-full" />
+                ) : (
+                    <h1 className={clsx("text-lg font-bold tracking-tight leading-tight text-slate-800 dark:text-cyan-400 truncate")}>{schoolName || 'Academic System'}</h1>
+                )}
+                <span className={clsx("text-[10px] uppercase tracking-widest font-semibold opacity-70 block")}>Admin Portal</span>
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden opacity-70 hover:opacity-100 text-slate-500 dark:text-cyan-400"><X size={20} /></button>

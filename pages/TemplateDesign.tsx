@@ -4,7 +4,7 @@ import {
   Image as ImageIcon, Type, Save, Trash2, Layout, Maximize, Minus, Plus, 
   List as ListIcon, Palette, Settings, Bold, Italic, Upload, Loader2,
   Copy, Edit, Share2, FileJson, Download, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  FileUp, RefreshCw, Variable
+  FileUp, RefreshCw, Variable, X, Check
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DesignElement, SavedTemplate } from '../types';
@@ -26,6 +26,11 @@ export const TemplateDesign: React.FC = () => {
   const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState<string>('');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Save Modal State
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveAsNew, setSaveAsNew] = useState(false);
 
   // Canvas Size State
   const [pageSize, setPageSize] = useState({ width: 794, height: 1123, name: 'A4' });
@@ -64,16 +69,20 @@ export const TemplateDesign: React.FC = () => {
 
   // --- Save / Load / Export Logic ---
 
-  const saveTemplate = async (asNew: boolean = false) => {
-    let id = loadedTemplateId;
-    let name = templateName;
+  const initiateSave = (asNew: boolean) => {
+      setSaveAsNew(asNew);
+      if (asNew || !loadedTemplateId) {
+          setTemplateName(prev => asNew ? `${prev} (Copy)` : prev);
+          setShowSaveModal(true);
+      } else {
+          // Direct update
+          confirmSave(templateName, false);
+      }
+  };
 
-    if (asNew || !id) {
-        name = prompt("Enter a name for this template:", templateName || `Template ${savedTemplates.length + 1}`) || '';
-        if (!name) return;
-        id = Date.now().toString();
-    }
-
+  const confirmSave = async (name: string, isNew: boolean) => {
+    let id = isNew ? Date.now().toString() : (loadedTemplateId || Date.now().toString());
+    
     setIsSavingTemplate(true);
     try {
         await DataService.saveTemplate({
@@ -92,10 +101,16 @@ export const TemplateDesign: React.FC = () => {
         setLoadedTemplateId(id);
         setTemplateName(name);
         
-        showToast(asNew ? "Saved as new template" : "Template updated", 'success');
-        if(!loadedTemplateId && !asNew) setActiveTab('list');
-    } catch (e) {
-        showToast("Failed to save layout.", 'error');
+        showToast(isNew ? "Saved as new template" : "Template updated", 'success');
+        setShowSaveModal(false);
+        if(!loadedTemplateId && !isNew) setActiveTab('list');
+    } catch (e: any) {
+        console.error(e);
+        if (e.message?.includes('relation "templates" does not exist')) {
+            showToast("DB Error: 'templates' table missing. Run SQL fix in Admin Config.", 'error');
+        } else {
+            showToast("Failed to save layout.", 'error');
+        }
     } finally {
         setIsSavingTemplate(false);
     }
@@ -184,20 +199,37 @@ export const TemplateDesign: React.FC = () => {
     setSelectedId(newEl.id);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isWatermark = false) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isWatermark = false) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+        const publicUrl = await DataService.uploadFile(file, 'templates');
+        
         const newEl: DesignElement = {
-          id: Date.now().toString(), type: isWatermark ? 'watermark' : 'image', x: isWatermark ? 0 : 50, y: isWatermark ? 0 : 50, width: isWatermark ? pageSize.width : 200, height: isWatermark ? pageSize.height : 200, content: event.target?.result as string,
+          id: Date.now().toString(), 
+          type: isWatermark ? 'watermark' : 'image', 
+          x: isWatermark ? 0 : 50, 
+          y: isWatermark ? 0 : 50, 
+          width: isWatermark ? pageSize.width : 200, 
+          height: isWatermark ? pageSize.height : 200, 
+          content: publicUrl,
           style: { opacity: isWatermark ? 0.15 : 1 }
         };
+
         if (isWatermark) setElements(prev => [...prev.filter(el => el.type !== 'watermark'), newEl]);
         else setElements(prev => [...prev, newEl]);
+        
         setSelectedId(newEl.id);
-      };
-      reader.readAsDataURL(file);
+        showToast("Image uploaded to layout", "success");
+    } catch (error: any) {
+        console.error(error);
+        showToast("Image upload failed. Check connection.", "error");
+    } finally {
+        setIsUploadingImage(false);
+        // Reset input
+        e.target.value = '';
     }
   };
 
@@ -338,9 +370,10 @@ export const TemplateDesign: React.FC = () => {
                 <button onClick={addText} className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors">
                   <Type size={16} /> Add Text Block
                 </button>
-                <label className="flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
-                  <ImageIcon size={16} /> Add Image
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false)} />
+                <label className={clsx("flex items-center gap-2 px-3 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors", isUploadingImage ? "cursor-wait opacity-50" : "cursor-pointer")}>
+                  {isUploadingImage ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />} 
+                  {isUploadingImage ? 'Uploading...' : 'Add Image'}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false)} disabled={isUploadingImage} />
                 </label>
               </div>
 
@@ -406,15 +439,15 @@ export const TemplateDesign: React.FC = () => {
                   
                   {loadedTemplateId ? (
                       <div className="grid grid-cols-2 gap-2">
-                          <button onClick={() => saveTemplate(false)} disabled={isSavingTemplate} className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-50">
+                          <button onClick={() => initiateSave(false)} disabled={isSavingTemplate} className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-50">
                              {isSavingTemplate ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Update
                           </button>
-                          <button onClick={() => saveTemplate(true)} disabled={isSavingTemplate} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-50">
+                          <button onClick={() => initiateSave(true)} disabled={isSavingTemplate} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-50">
                              <Copy size={14} /> Save Copy
                           </button>
                       </div>
                   ) : (
-                      <button onClick={() => saveTemplate(true)} disabled={isSavingTemplate} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+                      <button onClick={() => initiateSave(true)} disabled={isSavingTemplate} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
                         {isSavingTemplate ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Layout
                       </button>
                   )}
@@ -514,6 +547,42 @@ export const TemplateDesign: React.FC = () => {
              ))}
           </div>
       </div>
+
+      {/* Save Modal */}
+      {showSaveModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">Save Template</h3>
+                      <button onClick={() => setShowSaveModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={24} /></button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Template Name</label>
+                          <input 
+                              type="text" 
+                              autoFocus
+                              className="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                              value={templateName}
+                              onChange={(e) => setTemplateName(e.target.value)}
+                              placeholder="e.g. A4 Report Card v2"
+                          />
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                          <button onClick={() => setShowSaveModal(false)} className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</button>
+                          <button 
+                              onClick={() => confirmSave(templateName, saveAsNew)} 
+                              disabled={!templateName.trim() || isSavingTemplate}
+                              className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                              {isSavingTemplate && <Loader2 size={16} className="animate-spin" />}
+                              Save
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

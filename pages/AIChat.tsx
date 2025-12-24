@@ -20,11 +20,13 @@ CREATE TABLE IF NOT EXISTS exam_types (id UUID PRIMARY KEY DEFAULT gen_random_uu
 CREATE TABLE IF NOT EXISTS marks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), obj_marks NUMERIC, obj_max_marks NUMERIC, sub_marks NUMERIC, sub_max_marks NUMERIC, exam_date DATE, grade TEXT, remarks TEXT, attended BOOLEAN, updated_at TIMESTAMPTZ, PRIMARY KEY(student_id, exam_id, subject_id));
 CREATE TABLE IF NOT EXISTS teacher_remarks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), remark TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id, subject_id));
 CREATE TABLE IF NOT EXISTS non_academic_records (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), attendance TEXT, discipline TEXT, leadership TEXT, arts TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id));
-CREATE TABLE IF NOT EXISTS school_config (id INTEGER PRIMARY KEY, name TEXT, tagline TEXT, logo_url TEXT, watermark_url TEXT, scorecard_layout JSONB, role_permissions JSONB, updated_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS school_config (id INTEGER PRIMARY KEY, name TEXT, tagline TEXT, logo_url TEXT, watermark_url TEXT, icon_url TEXT, scorecard_layout JSONB, role_permissions JSONB, updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements JSONB, width INTEGER, height INTEGER, created_at TIMESTAMPTZ DEFAULT NOW());
 
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS icon_url TEXT;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS full_logo_url TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_class_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_subject_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS staff_post TEXT;

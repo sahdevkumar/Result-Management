@@ -403,7 +403,7 @@ export const ScoreCard: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [schoolInfo, setSchoolInfo] = useState({ name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '' });
+  const [schoolInfo, setSchoolInfo] = useState({ name: 'Academic System', tagline: 'Excellence in Education', logo: '', watermark: '' });
   
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');

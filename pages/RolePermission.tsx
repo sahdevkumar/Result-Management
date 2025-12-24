@@ -7,7 +7,7 @@ import {
   ShieldAlert, Fingerprint, Activity, Database, Loader2,
   LayoutDashboard, FileText, MessageSquareQuote, CreditCard,
   BarChart3, Printer, Palette, UserCog, BookOpen, GraduationCap,
-  Bookmark, Terminal, Copy, Check, UserPlus, Trash2, Edit
+  Bookmark, Terminal, Copy, Check, UserPlus, Trash2, Edit, Building2
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { DataService } from '../services/dataService';
@@ -40,6 +40,7 @@ const SYSTEM_PERMISSIONS: Permission[] = [
   { id: 'output_print', name: 'Print Center', category: 'Reports & Output', description: 'Bulk print management for reports', icon: Printer },
   { id: 'design_templates', name: 'Template Designer', category: 'System', description: 'Create and edit scorecard layouts', icon: Palette },
   { id: 'config_settings', name: 'Academic Settings', category: 'System', description: 'Manage Subjects, Classes, and Types', icon: Settings },
+  { id: 'sys_branding', name: 'Admin Config', category: 'System', description: 'Manage school identity, logo and watermark', icon: Building2 },
   { id: 'sec_roles', name: 'Role & Permission', category: 'Security', description: 'Manage system access control matrix', icon: ShieldCheck },
   { id: 'sec_users', name: 'User Management', category: 'Security', description: 'Administer staff accounts and status', icon: UserCog },
   { id: 'sec_audit', name: 'Audit Logs', category: 'Security', description: 'Monitor system-wide activity history', icon: Fingerprint },
@@ -56,9 +57,15 @@ const INITIAL_ROLE_MAP: Record<SystemRole, string[]> = {
 const SQL_FIX = `-- RUN THIS IN SUPABASE SQL EDITOR
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS icon_url TEXT;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS full_logo_url TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_class_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_subject_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS staff_post TEXT;
+
+-- Create templates table if missing
+CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements JSONB, width INTEGER, height INTEGER, created_at TIMESTAMPTZ DEFAULT NOW());
+ALTER TABLE templates DISABLE ROW LEVEL SECURITY;
 
 -- Ensure record 1 exists
 INSERT INTO school_config (id, name, tagline) 
@@ -201,7 +208,7 @@ export const RolePermission: React.FC = () => {
                   <div className="flex-1">
                       <h3 className="text-lg font-black text-red-600 dark:text-red-400 uppercase tracking-tight">Database Repair Required</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-                          The column <code>role_permissions</code> is missing from your Supabase <code>school_config</code> table. Copy the script below and run it in your Supabase SQL Editor.
+                          Required columns are missing from your Supabase table. Copy the script below and run it in your Supabase SQL Editor.
                       </p>
                   </div>
                   <button onClick={handleCopySql} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg shadow-red-200 dark:shadow-none">

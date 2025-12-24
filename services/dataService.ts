@@ -249,7 +249,7 @@ export const DataService = {
 
         await supabase.from('school_config').upsert({
             id: 1,
-            name: 'UNACADEMY',
+            name: 'ACADEMIC SYSTEM',
             tagline: 'Excellence in Education'
         }, { onConflict: 'id' });
 
@@ -272,25 +272,29 @@ export const DataService = {
   getSchoolInfo: async () => {
     const { data, error } = await supabase.from('school_config').select('*').eq('id', 1).maybeSingle();
     if (error || !data) {
-      return { name: 'UNACADEMY', tagline: 'Excellence in Education', logo: '', watermark: '', scorecard_layout: null, role_permissions: null };
+      return { name: 'ACADEMIC SYSTEM', tagline: 'Excellence in Education', logo: '', watermark: '', icon: '', scorecard_layout: null, role_permissions: null, fullLogo: '' };
     }
     return {
       name: data.name,
       tagline: data.tagline,
       logo: data.logo_url,
       watermark: data.watermark_url,
+      icon: data.icon_url,
       scorecard_layout: data.scorecard_layout,
-      role_permissions: data.role_permissions
+      role_permissions: data.role_permissions,
+      fullLogo: data.full_logo_url
     };
   },
 
-  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, scorecard_layout?: any, role_permissions?: any }) => {
+  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, icon?: string, scorecard_layout?: any, role_permissions?: any, fullLogo?: string }) => {
     const dbRecord = {
       id: 1, 
-      name: info.name || 'UNACADEMY',
+      name: info.name || 'ACADEMIC SYSTEM',
       tagline: info.tagline || 'Excellence in Education',
       logo_url: info.logo || '',
       watermark_url: info.watermark || '',
+      icon_url: info.icon || '',
+      full_logo_url: info.fullLogo || '',
       scorecard_layout: info.scorecard_layout || null,
       role_permissions: info.role_permissions || null,
       updated_at: new Date().toISOString()
@@ -303,8 +307,8 @@ export const DataService = {
     if (error) {
         console.error("DATA_SERVICE_UPSERT_ERROR:", error.message || error);
         
-        if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions'))) {
-            throw new Error(`DATABASE_SCHEMA_OUT_OF_DATE: The column 'role_permissions' is missing in the 'school_config' table. Please run the SQL fix in Login > Diagnostics.`);
+        if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions') || error.message?.includes('full_logo_url'))) {
+            throw new Error(`DATABASE_SCHEMA_OUT_OF_DATE: Missing columns in 'school_config' table. Please run the SQL fix in Login > Diagnostics.`);
         }
         throw new Error(error.message || "Failed to update school configuration.");
     }

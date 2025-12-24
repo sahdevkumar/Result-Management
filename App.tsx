@@ -15,6 +15,7 @@ import { ScoreCard } from './pages/ScoreCard';
 import { TeachersRemarks } from './pages/TeachersRemarks'; 
 import { RolePermission } from './pages/RolePermission';
 import { UserManagement } from './pages/UserManagement';
+import { AdminConfig } from './pages/AdminConfig';
 import { AIChat } from './pages/AIChat';
 import { Login } from './pages/Login';
 import { Menu, Wifi, WifiOff, Loader2 } from 'lucide-react';
@@ -31,7 +32,12 @@ const AccessGuard: React.FC<{ user: UserProfile, matrix: Record<string, string[]
   return <>{children}</>;
 };
 
-const Layout: React.FC<{ user: UserProfile, matrix: Record<string, string[]> | null, onLogout: () => void }> = ({ user, matrix, onLogout }) => {
+const Layout: React.FC<{ 
+    user: UserProfile, 
+    matrix: Record<string, string[]> | null, 
+    onLogout: () => void,
+    schoolConfig: { name: string, logo: string, icon: string, fullLogo?: string }
+}> = ({ user, matrix, onLogout, schoolConfig }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -55,11 +61,25 @@ const Layout: React.FC<{ user: UserProfile, matrix: Record<string, string[]> | n
 
   return (
     <div className={clsx("flex min-h-screen font-sans print:bg-white print:block print:min-h-0 print-reset transition-colors duration-300", mainBg)}>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} isOnline={isOnline} onLogout={handleLogout} user={user} permissionMatrix={matrix} />
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        isOnline={isOnline} 
+        onLogout={handleLogout} 
+        user={user} 
+        permissionMatrix={matrix} 
+        schoolName={schoolConfig.name}
+        schoolIcon={schoolConfig.icon || schoolConfig.logo}
+        schoolFullLogo={schoolConfig.fullLogo}
+      />
       <div className={clsx("lg:hidden fixed top-0 left-0 right-0 h-16 backdrop-blur-md border-b z-40 flex items-center justify-between px-4 shadow-sm no-print", mobileHeaderClass)}>
          <div className="flex items-center gap-3">
              <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-lg transition-colors text-slate-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-cyan-950/30"><Menu size={24} /></button>
-             <span className="font-bold text-lg text-slate-800 dark:text-cyan-400">Unacademy</span>
+             {schoolConfig.fullLogo ? (
+                 <img src={schoolConfig.fullLogo} alt="School Logo" className="h-8 object-contain" />
+             ) : (
+                 <span className="font-bold text-lg text-slate-800 dark:text-cyan-400 truncate max-w-[200px]">{schoolConfig.name}</span>
+             )}
          </div>
          <div className="flex items-center gap-3">
             <div title={isOnline ? "Database Connected" : "Connection Lost"}>{isOnline ? <Wifi size={18} className="text-emerald-500" /> : <WifiOff size={18} className="text-red-500" />}</div>
@@ -78,6 +98,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [permissionMatrix, setPermissionMatrix] = useState<Record<string, string[]> | null>(null);
+  const [schoolConfig, setSchoolConfig] = useState({ name: 'Academic System', logo: '', icon: '', fullLogo: '' });
 
   const loadConfig = async () => {
     try {
@@ -85,6 +106,12 @@ const App: React.FC = () => {
         if (info.role_permissions) {
             setPermissionMatrix(info.role_permissions as any);
         }
+        setSchoolConfig({ 
+            name: info.name || 'Academic System', 
+            logo: info.logo || '', 
+            icon: info.icon || '',
+            fullLogo: info.fullLogo || ''
+        });
     } catch (e) {
         console.error("Config load error", e);
     }
@@ -108,9 +135,9 @@ const App: React.FC = () => {
   if (isInitializing) {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center text-slate-800 dark:text-cyan-400">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Unacademy_Logo.png/600px-Unacademy_Logo.png" alt="Unacademy" className="w-16 h-16 object-contain mb-6 animate-pulse" />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Unacademy_Logo.png/600px-Unacademy_Logo.png" alt="Loading" className="w-16 h-16 object-contain mb-6 animate-pulse" />
             <Loader2 className="animate-spin text-indigo-600 dark:text-cyan-500 mb-4" size={48} />
-            <p className="text-slate-500 dark:text-cyan-700 font-bold uppercase tracking-widest text-xs">Loading Academic System...</p>
+            <p className="text-slate-500 dark:text-cyan-700 font-bold uppercase tracking-widest text-xs">Loading System...</p>
         </div>
     );
   }
@@ -121,7 +148,7 @@ const App: React.FC = () => {
         {!user ? <Login onLoginSuccess={(u) => { setUser(u); loadConfig(); }} /> : (
             <Router>
               <Routes>
-                <Route path="/" element={<Layout user={user} matrix={permissionMatrix} onLogout={() => setUser(null)} />}>
+                <Route path="/" element={<Layout user={user} matrix={permissionMatrix} onLogout={() => setUser(null)} schoolConfig={schoolConfig} />}>
                   <Route index element={<Dashboard />} />
                   <Route path="chat" element={<AIChat />} />
                   <Route path="students" element={<Students />} />
@@ -135,6 +162,7 @@ const App: React.FC = () => {
                   <Route path="print" element={<PrintReport />} />
                   <Route path="roles" element={<RolePermission />} />
                   <Route path="users" element={<UserManagement />} />
+                  <Route path="admin-config" element={<AdminConfig />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>

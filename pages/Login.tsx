@@ -24,7 +24,26 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const [isFetchingSubjects, setIsFetchingSubjects] = useState(false);
     const [isSeeding, setIsSeeding] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [schoolBranding, setSchoolBranding] = useState({ name: 'Unacademy', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Unacademy_Logo.png/600px-Unacademy_Logo.png', fullLogo: '' });
+    
     const { showToast } = useToast();
+
+    // Fetch school config for custom branding
+    useEffect(() => {
+        const loadBranding = async () => {
+            try {
+                const info = await DataService.getSchoolInfo();
+                setSchoolBranding(prev => ({
+                    name: info.name || prev.name,
+                    icon: info.icon || prev.icon,
+                    fullLogo: info.fullLogo || ''
+                }));
+            } catch(e) {
+                // Keep defaults if error
+            }
+        };
+        loadBranding();
+    }, []);
 
     const SQL_FIX = `-- RUN THIS IN SUPABASE SQL EDITOR
 -- 1. ENSURE TABLES EXIST
@@ -37,12 +56,14 @@ CREATE TABLE IF NOT EXISTS exam_types (id UUID PRIMARY KEY DEFAULT gen_random_uu
 CREATE TABLE IF NOT EXISTS marks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), obj_marks NUMERIC, obj_max_marks NUMERIC, sub_marks NUMERIC, sub_max_marks NUMERIC, exam_date DATE, grade TEXT, remarks TEXT, attended BOOLEAN, updated_at TIMESTAMPTZ, PRIMARY KEY(student_id, exam_id, subject_id));
 CREATE TABLE IF NOT EXISTS teacher_remarks (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), subject_id UUID REFERENCES subjects(id), remark TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id, subject_id));
 CREATE TABLE IF NOT EXISTS non_academic_records (student_id UUID REFERENCES students(id), exam_id UUID REFERENCES exams(id), attendance TEXT, discipline TEXT, leadership TEXT, arts TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY(student_id, exam_id));
-CREATE TABLE IF NOT EXISTS school_config (id INTEGER PRIMARY KEY, name TEXT, tagline TEXT, logo_url TEXT, watermark_url TEXT, scorecard_layout JSONB, role_permissions JSONB, updated_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS school_config (id INTEGER PRIMARY KEY, name TEXT, tagline TEXT, logo_url TEXT, watermark_url TEXT, icon_url TEXT, scorecard_layout JSONB, role_permissions JSONB, updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements JSONB, width INTEGER, height INTEGER, created_at TIMESTAMPTZ DEFAULT NOW());
 
 -- 2. APPLY SCHEMA MIGRATIONS (IF COLUMNS ARE MISSING)
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS icon_url TEXT;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS full_logo_url TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_class_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS assigned_subject_id TEXT;
 ALTER TABLE system_users ADD COLUMN IF NOT EXISTS staff_post TEXT;
@@ -159,10 +180,16 @@ INSERT INTO school_config (id, name, tagline) VALUES (1, 'UNACADEMY', 'Excellenc
 
             <div className={clsx("w-full transition-all duration-500 relative z-10", mode === 'diagnostics' ? 'max-w-3xl' : 'max-w-md')}>
                 <div className="text-center mb-10">
-                    <div className={clsx("inline-flex p-4 rounded-3xl shadow-2xl mb-6", styles.card)}>
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Unacademy_Logo.png/600px-Unacademy_Logo.png" alt="Unacademy" className="w-12 h-12 object-contain" />
+                    <div className="mb-6 flex justify-center">
+                        <img src={schoolBranding.icon} alt="School Icon" className="w-20 h-20 object-contain drop-shadow-md" />
                     </div>
-                    <h1 className="text-4xl font-black tracking-tight uppercase text-indigo-600 dark:text-cyan-400">Unacademy</h1>
+                    {schoolBranding.fullLogo ? (
+                        <div className="flex justify-center mb-2">
+                            <img src={schoolBranding.fullLogo} alt="School Name" className="h-12 object-contain" />
+                        </div>
+                    ) : (
+                        <h1 className="text-4xl font-black tracking-tight uppercase text-indigo-600 dark:text-cyan-400">{schoolBranding.name}</h1>
+                    )}
                     <p className={clsx("mt-2 font-medium", styles.text)}>Academic Result Management System</p>
                 </div>
 
