@@ -1,14 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
 import { useToast } from '../components/ToastContext';
-import { Save, Upload, School, Image as ImageIcon, Loader2, Type, Building2, Eye, X, Terminal, Check, Copy, CalendarRange } from 'lucide-react';
+import { Save, Upload, School, Image as ImageIcon, Loader2, Type, Building2, Eye, X, Terminal, Check, Copy, CalendarRange, PenTool } from 'lucide-react';
 import clsx from 'clsx';
 
 const SQL_FIX = `ALTER TABLE school_config ADD COLUMN IF NOT EXISTS full_logo_url TEXT;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS role_permissions JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS scorecard_layout JSONB;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS icon_url TEXT;
+ALTER TABLE school_config ADD COLUMN IF NOT EXISTS signature_url TEXT;
 ALTER TABLE school_config ADD COLUMN IF NOT EXISTS academic_session TEXT;
 
 -- Create templates table if missing
@@ -16,13 +16,14 @@ CREATE TABLE IF NOT EXISTS templates (id TEXT PRIMARY KEY, name TEXT, elements J
 ALTER TABLE templates DISABLE ROW LEVEL SECURITY;`;
 
 export const AdminConfig: React.FC = () => {
-  const [schoolInfo, setSchoolInfo] = useState({ name: '', tagline: '', logo: '', watermark: '', icon: '', fullLogo: '', academicSession: '' });
+  const [schoolInfo, setSchoolInfo] = useState({ name: '', tagline: '', logo: '', watermark: '', icon: '', fullLogo: '', academicSession: '', signature: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingWatermark, setUploadingWatermark] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [uploadingFullLogo, setUploadingFullLogo] = useState(false);
+  const [uploadingSignature, setUploadingSignature] = useState(false);
   const [showSqlFix, setShowSqlFix] = useState(false);
   const [copied, setCopied] = useState(false);
   const { showToast } = useToast();
@@ -42,7 +43,7 @@ export const AdminConfig: React.FC = () => {
     load();
   }, []);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'watermark' | 'icon' | 'fullLogo') => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'watermark' | 'icon' | 'fullLogo' | 'signature') => {
       const file = e.target.files?.[0];
       if (!file) return;
       
@@ -50,7 +51,8 @@ export const AdminConfig: React.FC = () => {
       if (type === 'logo') setUploading = setUploadingLogo;
       else if (type === 'watermark') setUploading = setUploadingWatermark;
       else if (type === 'icon') setUploading = setUploadingIcon;
-      else setUploading = setUploadingFullLogo;
+      else if (type === 'fullLogo') setUploading = setUploadingFullLogo;
+      else setUploading = setUploadingSignature;
 
       setUploading(true);
       
@@ -65,7 +67,7 @@ export const AdminConfig: React.FC = () => {
       }
   };
 
-  const handleRemoveImage = (type: 'fullLogo') => {
+  const handleRemoveImage = (type: 'fullLogo' | 'signature') => {
       setSchoolInfo(prev => ({ ...prev, [type]: '' }));
   };
 
@@ -79,7 +81,7 @@ export const AdminConfig: React.FC = () => {
           setTimeout(() => window.location.reload(), 1000);
       } catch (e: any) {
           const errMsg = e.message || "";
-          if (errMsg.includes('DATABASE_SCHEMA_OUT_OF_DATE') || errMsg.includes('full_logo_url') || errMsg.includes('academic_session')) {
+          if (errMsg.includes('DATABASE_SCHEMA_OUT_OF_DATE') || errMsg.includes('full_logo_url') || errMsg.includes('academic_session') || errMsg.includes('signature_url')) {
               setShowSqlFix(true);
               showToast("Schema Repair Required: Missing database columns.", "error");
           } else {
@@ -126,7 +128,7 @@ export const AdminConfig: React.FC = () => {
                   <div className="flex-1">
                       <h3 className="text-lg font-black text-red-600 dark:text-red-400 uppercase tracking-tight">Database Repair Required</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-                          The system detected missing columns (e.g. <code>academic_session</code>) in your Supabase table. Copy the script below and run it in your Supabase SQL Editor.
+                          The system detected missing columns (e.g. <code>signature_url</code>) in your Supabase table. Copy the script below and run it in your Supabase SQL Editor.
                       </p>
                   </div>
                   <button onClick={handleCopySql} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg shadow-red-200 dark:shadow-none">
@@ -219,7 +221,7 @@ export const AdminConfig: React.FC = () => {
               <h2 className="text-xl font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                   <ImageIcon className="text-indigo-500" /> Visual Assets
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 gap-6">
                   {/* Logo Upload */}
                   <div className="space-y-3">
                       <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Official Logo</label>
@@ -307,6 +309,37 @@ export const AdminConfig: React.FC = () => {
                           />
                       </div>
                   </div>
+
+                  {/* Head Signature Upload */}
+                  <div className="space-y-3">
+                      <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Head Signature</label>
+                      <div className="relative group aspect-square bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center overflow-hidden hover:border-indigo-400 transition-all">
+                          {uploadingSignature ? (
+                              <Loader2 className="animate-spin text-indigo-500" size={32} />
+                          ) : schoolInfo.signature ? (
+                              <>
+                                <img src={schoolInfo.signature} alt="Head Signature" className="w-full h-full object-contain p-4 mix-blend-multiply dark:mix-blend-normal" />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <span className="text-white text-xs font-bold">Change</span>
+                                    <button onClick={(e) => { e.stopPropagation(); handleRemoveImage('signature'); }} className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"><X size={14} /></button>
+                                </div>
+                              </>
+                          ) : (
+                              <div className="text-center p-4">
+                                  <PenTool className="mx-auto text-slate-300 mb-2" size={24} />
+                                  <span className="text-xs text-slate-400 font-bold">Upload Sign</span>
+                                  <span className="text-[9px] text-slate-300 block mt-1">PNG with Alpha</span>
+                              </div>
+                          )}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                            onChange={(e) => handleUpload(e, 'signature')}
+                            disabled={uploadingSignature}
+                          />
+                      </div>
+                  </div>
               </div>
           </div>
       </div>
@@ -319,7 +352,7 @@ export const AdminConfig: React.FC = () => {
               <h4 className="font-bold text-slate-800 dark:text-white text-sm">System-Wide Application</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                   Changes made here will immediately reflect on the <b>Score Card</b> layout, <b>Report Headers</b>, and the <b>Login Screen</b>. 
-                  Ensure images are high-resolution (transparent PNG recommended for Logos). The "System Icon" appears on the main login page.
+                  Ensure images are high-resolution (transparent PNG recommended for Logos and Signatures).
               </p>
           </div>
       </div>

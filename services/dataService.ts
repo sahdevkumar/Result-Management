@@ -1,4 +1,3 @@
-
 import { supabase } from "../lib/supabase";
 import { Student, StudentStatus, Exam, ExamStatus, Subject, MarkRecord, SchoolClass, ExamType, SavedTemplate, TeacherRemark, NonAcademicRecord, UserProfile, ActivityLog } from "../types";
 
@@ -274,7 +273,7 @@ export const DataService = {
     if (error || !data) {
       return { 
           name: 'ACADEMIC SYSTEM', tagline: 'Excellence in Education', logo: '', watermark: '', icon: '', 
-          scorecard_layout: null, role_permissions: null, fullLogo: '', academicSession: '2024-2025' 
+          scorecard_layout: null, role_permissions: null, fullLogo: '', academicSession: '2024-2025', signature: '' 
       };
     }
     return {
@@ -286,11 +285,12 @@ export const DataService = {
       scorecard_layout: data.scorecard_layout,
       role_permissions: data.role_permissions,
       fullLogo: data.full_logo_url,
-      academicSession: data.academic_session || '2024-2025'
+      academicSession: data.academic_session || '2024-2025',
+      signature: data.signature_url || ''
     };
   },
 
-  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, icon?: string, scorecard_layout?: any, role_permissions?: any, fullLogo?: string, academicSession?: string }) => {
+  updateSchoolInfo: async (info: { name: string, tagline: string, logo: string, watermark: string, icon?: string, scorecard_layout?: any, role_permissions?: any, fullLogo?: string, academicSession?: string, signature?: string }) => {
     const dbRecord = {
       id: 1, 
       name: info.name || 'ACADEMIC SYSTEM',
@@ -299,6 +299,7 @@ export const DataService = {
       watermark_url: info.watermark || '',
       icon_url: info.icon || '',
       full_logo_url: info.fullLogo || '',
+      signature_url: info.signature || '',
       academic_session: info.academicSession || '2024-2025',
       scorecard_layout: info.scorecard_layout || null,
       role_permissions: info.role_permissions || null,
@@ -312,7 +313,7 @@ export const DataService = {
     if (error) {
         console.error("DATA_SERVICE_UPSERT_ERROR:", error.message || error);
         
-        if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions') || error.message?.includes('full_logo_url') || error.message?.includes('academic_session'))) {
+        if (error.message?.includes('column') && (error.message?.includes('not find') || error.message?.includes('role_permissions') || error.message?.includes('full_logo_url') || error.message?.includes('academic_session') || error.message?.includes('signature_url'))) {
             throw new Error(`DATABASE_SCHEMA_OUT_OF_DATE: Missing columns in 'school_config' table. Please run the SQL fix in Login > Diagnostics.`);
         }
         throw new Error(error.message || "Failed to update school configuration.");
@@ -489,7 +490,7 @@ export const DataService = {
   },
 
   deleteClass: async (id: string): Promise<void> => {
-    const { error } = await supabase.from('classes').delete().eq('id', id);
+    const { error = null } = await supabase.from('classes').delete().eq('id', id);
     if (error) throw new Error(error.message || "Failed to delete class");
   },
 
@@ -510,7 +511,7 @@ export const DataService = {
   },
 
   deleteExamType: async (id: string): Promise<void> => {
-    const { error } = await supabase.from('exam_types').delete().eq('id', id);
+    const { error = null } = await supabase.from('exam_types').delete().eq('id', id);
     if (error) throw new Error(error.message || "Failed to delete exam type");
   },
 

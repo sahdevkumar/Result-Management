@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, FileText, BarChart3, Settings, LogOut, 
   PenTool, X, Wifi, WifiOff, Palette, Printer, CreditCard, 
   MessageSquareQuote, GraduationCap, Activity, ShieldCheck, UserCircle, UserCog,
-  Sun, Moon, Monitor, ChevronUp, ChevronDown, Sparkles, Building2
+  Sun, Moon, Monitor, ChevronUp, ChevronDown, Sparkles, Building2, Trash2
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { useTheme } from './ThemeContext';
@@ -38,7 +38,8 @@ const PATH_TO_ID: Record<string, string> = {
   '/admin-config': 'sys_branding',
   '/roles': 'sec_roles',
   '/users': 'sec_users',
-  '/chat': 'nav_chat'
+  '/chat': 'nav_chat',
+  '/recycle-bin': 'sys_recycle'
 };
 
 export const canAccessPath = (path: string, role: string, matrix: Record<string, string[]> | null): boolean => {
@@ -84,6 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
   ];
 
   const systemItems = [
+    { icon: Trash2, label: 'Recycle Bin', path: '/recycle-bin' },
     { icon: ShieldCheck, label: 'Role & Permission', path: '/roles' },
     { icon: UserCog, label: 'User Management', path: '/users' },
     { icon: Building2, label: 'Admin Config', path: '/admin-config' },

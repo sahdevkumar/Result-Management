@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { DataService } from '../services/dataService';
 import { Student, Exam, Subject, MarkRecord, SchoolClass, NonAcademicRecord, SavedTemplate } from '../types';
@@ -14,8 +13,9 @@ import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
 
 // Initialize pdfMake vfs
-if (pdfMake.vfs === undefined && pdfFonts && pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) {
-  pdfMake.vfs = pdfFonts.pdfMake.vfs;
+// Fix: Cast pdfFonts to any to bypass missing property error in vfs_fonts types provided by the build
+if (pdfMake.vfs === undefined && pdfFonts && (pdfFonts as any).pdfMake && (pdfFonts as any).pdfMake.vfs) {
+  pdfMake.vfs = (pdfFonts as any).pdfMake.vfs;
 }
 
 interface LayoutBlock {
@@ -158,7 +158,7 @@ const useScoreCalculations = (exams: Exam[], subjects: Subject[]) => {
 
 const BlockRenderer: React.FC<{
     block: LayoutBlock;
-    schoolInfo: { name: string, tagline: string, logo: string, watermark: string, academicSession?: string };
+    schoolInfo: { name: string, tagline: string, logo: string, watermark: string, academicSession?: string, signature?: string };
     student: Student;
     marks: MarkRecord[];
     nonAcademic: NonAcademicRecord | null;
@@ -333,8 +333,14 @@ const BlockRenderer: React.FC<{
         case 'signatures':
             return (
                 <div className="w-full h-full flex justify-between items-end px-4" style={{ fontSize: `${block.style.fontSize}px`, color: block.style.color }}>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black opacity-50 uppercase text-[8px] tracking-widest">Guardian's Sign</p></div>
-                    <div className="text-center"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black opacity-50 uppercase text-[8px] tracking-widest">Academic Head</p></div>
+                    <div className="text-center pb-1"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black opacity-50 uppercase text-[8px] tracking-widest">Guardian's Sign</p></div>
+                    <div className="text-center relative">
+                        {schoolInfo.signature && (
+                            <img src={schoolInfo.signature} className="absolute -top-12 left-1/2 -translate-x-1/2 h-16 w-32 object-contain mix-blend-multiply dark:mix-blend-normal pointer-events-none" alt="Head Signature" />
+                        )}
+                        <div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div>
+                        <p className="font-black opacity-50 uppercase text-[8px] tracking-widest">Academic Head</p>
+                    </div>
                 </div>
             );
         default:
@@ -349,7 +355,7 @@ const CustomizableScoreCard: React.FC<{
     exams: Exam[];
     subjects: Subject[];
     helpers: ReturnType<typeof useScoreCalculations>;
-    schoolInfo: { name: string, tagline: string, logo: string, watermark: string, academicSession?: string };
+    schoolInfo: { name: string, tagline: string, logo: string, watermark: string, academicSession?: string, signature?: string };
     layout: LayoutBlock[];
     isPreview?: boolean;
     scale?: number;
@@ -390,7 +396,7 @@ export const ScoreCard: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [schoolInfo, setSchoolInfo] = useState({ name: 'Academic System', tagline: 'Excellence in Education', logo: '', watermark: '', academicSession: '2024-2025' });
+  const [schoolInfo, setSchoolInfo] = useState({ name: 'Academic System', tagline: 'Excellence in Education', logo: '', watermark: '', academicSession: '2024-2025', signature: '' });
   
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
@@ -413,7 +419,7 @@ export const ScoreCard: React.FC = () => {
   const [newTemplateName, setNewTemplateName] = useState('');
   
   const [loadingBulk, setLoadingBulk] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState(true);
   const [isSavingAssets, setIsSavingAssets] = useState(false);
   const [isUploadingWatermark, setIsUploadingWatermark] = useState(false);
   
@@ -429,7 +435,6 @@ export const ScoreCard: React.FC = () => {
   const resizeStart = useRef({ x: 0, y: 0 });
   const dimStart = useRef({ w: 0, h: 0 });
 
-  const currentStudent = students.find(s => s.id === selectedStudentId);
   const dummyStudent: Student = {
       id: 'dummy', fullName: 'Rohit Sharma', rollNumber: '', className: 'X', section: '', contactNumber: '9876543210', guardianName: 'Mr. Sharma', status: 'Active' as any, avatarUrl: ''
   };
@@ -444,16 +449,20 @@ export const ScoreCard: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
+      setDownloading(false);
       try {
-        const [c, e, s, info] = await Promise.all([ 
+        const [c, e, s, stData, info] = await Promise.all([ 
             DataService.getClasses(), 
             DataService.getExams(), 
-            DataService.getSubjects(), 
+            DataService.getSubjects(),
+            DataService.getStudents(),
             DataService.getSchoolInfo() 
-        ]);
+        ]) as [SchoolClass[], Exam[], Subject[], Student[], any];
+        
         setClasses(c);
         setExams(e);
         setSubjects(s);
+        setStudents(stData);
         setSchoolInfo(info as any);
         
         if (info.scorecard_layout) {
@@ -549,15 +558,12 @@ export const ScoreCard: React.FC = () => {
 
   useEffect(() => {
     if(!selectedClassId) return;
-    const loadStudents = async () => {
-        const allStudents = await DataService.getStudents();
+    const updateFilteredStudents = () => {
         const cls = classes.find(c => c.id === selectedClassId);
         if(cls) {
-            const filtered = allStudents.filter(s => s.className === cls.className && s.section === cls.section);
-            setStudents(filtered);
+            const filtered = students.filter(s => s.className === cls.className && s.section === cls.section);
             setBulkSelection(new Set(filtered.map(s => s.id)));
         } else {
-            setStudents([]);
             setBulkSelection(new Set());
         }
         setSelectedStudentId('');
@@ -565,8 +571,8 @@ export const ScoreCard: React.FC = () => {
         setBulkNonAcademic({});
         setBulkViewMode('selection');
     };
-    loadStudents();
-  }, [selectedClassId, classes]);
+    updateFilteredStudents();
+  }, [selectedClassId, classes, students]);
 
   useEffect(() => {
     if(!selectedStudentId) return;
@@ -574,7 +580,7 @@ export const ScoreCard: React.FC = () => {
         try {
             const [marks, nonAcademicRecords] = await Promise.all([
                 DataService.getStudentHistory(selectedStudentId),
-                exams.length > 0 ? DataService.getNonAcademicRecords(exams[0].id) : Promise.resolve([])
+                exams.length > 0 ? DataService.getNonAcademicRecords(exams[exams.length - 1].id) : Promise.resolve([])
             ]);
             setStudentMarks(marks);
             const studentRecord = nonAcademicRecords.find(r => r.studentId === selectedStudentId);
@@ -592,12 +598,12 @@ export const ScoreCard: React.FC = () => {
       try {
           const marksData: Record<string, MarkRecord[]> = {};
           const nonAcademicData: Record<string, NonAcademicRecord> = {};
-          const selectedStudents = students.filter(s => bulkSelection.has(s.id));
+          const selectedStudentsToFetch = students.filter(s => bulkSelection.has(s.id));
           
-          const examId = exams.length > 0 ? exams[0].id : '';
+          const examId = exams.length > 0 ? exams[exams.length - 1].id : '';
           const nonAcadRecords = examId ? await DataService.getNonAcademicRecords(examId) : [];
 
-          await Promise.all(selectedStudents.map(async (student) => {
+          await Promise.all(selectedStudentsToFetch.map(async (student) => {
               const history = await DataService.getStudentHistory(student.id);
               marksData[student.id] = history;
               const na = nonAcadRecords.find(r => r.studentId === student.id);
@@ -678,6 +684,7 @@ export const ScoreCard: React.FC = () => {
           if (schoolInfo.watermark) watermarkBase64 = await getBase64ImageFromURL(schoolInfo.watermark);
 
           const content: any[] = [];
+          const currentStudent = students.find(s => s.id === selectedStudentId);
           const studentsToPrint = activeTab === 'single' ? (currentStudent ? [currentStudent] : []) : students.filter(s => bulkSelection.has(s.id));
 
           if (studentsToPrint.length === 0) { showToast("No students selected", 'error'); setDownloading(false); return; }
@@ -686,16 +693,13 @@ export const ScoreCard: React.FC = () => {
               const student = studentsToPrint[i];
               const marks = activeTab === 'single' ? studentMarks : (bulkMarks[student.id] || []);
               
-              const overallStats = helpers.calculateOverall(marks);
               const getB = (type: string) => layout.find(l => l.type === type && l.isVisible);
               const pageContent: any[] = [];
 
               const watermarkBlock = getB('watermark');
               if (watermarkBlock && watermarkBase64) {
-                  // Basic PDFMake doesn't support complex opacity layers well, but we can try generic background
                   pageContent.push({ image: watermarkBase64, width: 350, opacity: watermarkBlock.style.opacity || 0.1, absolutePosition: { x: (PAGE_W - 350) / 2, y: (PAGE_H - 300) / 2 } });
               } else if (watermarkBase64 && !watermarkBlock) {
-                  // Legacy fallback
                   pageContent.push({ image: watermarkBase64, width: 350, opacity: 0.1, absolutePosition: { x: (PAGE_W - 350) / 2, y: (PAGE_H - 300) / 2 } });
               }
 
@@ -707,7 +711,7 @@ export const ScoreCard: React.FC = () => {
               const infoBlock = getB('header_info');
               if (infoBlock) {
                   pageContent.push({
-                      columns: [{ text: `Report Card ${new Date().getFullYear()}-${new Date().getFullYear()+1}`, alignment: 'center', bold: true, width: '*' }],
+                      columns: [{ text: `Report Card ${schoolInfo.academicSession || new Date().getFullYear()}`, alignment: 'center', bold: true, width: '*' }],
                       fontSize: infoBlock.style.fontSize * pdfScale, color: infoBlock.style.color,
                       absolutePosition: { x: infoBlock.x * pdfScale, y: infoBlock.y * pdfScale }, width: infoBlock.w * pdfScale
                   });
@@ -717,7 +721,12 @@ export const ScoreCard: React.FC = () => {
               if (i < studentsToPrint.length - 1) content.push({ text: '', pageBreak: 'after' });
           }
 
-          const docDefinition = { pageSize: 'A4', pageMargins: [0, 0, 0, 0], content: content, defaultStyle: { font: 'Roboto' } };
+          const docDefinition: any = { 
+            pageSize: 'A4', 
+            pageMargins: [0, 0, 0, 0] as [number, number, number, number], 
+            content: content, 
+            defaultStyle: { font: 'Inter' } 
+          };
           pdfMake.createPdf(docDefinition).download(`Score_Cards_${new Date().getTime()}.pdf`);
           showToast("PDF generated successfully", 'success');
       } catch (e: any) { console.error(e); showToast("PDF Error: " + e.message, 'error'); } finally { setDownloading(false); }
@@ -770,12 +779,13 @@ export const ScoreCard: React.FC = () => {
   };
 
   const selectedBlock = layout.find(b => b.id === selectedBlockId);
+  const currentStudent = students.find(s => s.id === selectedStudentId);
 
   return (
     <div className="space-y-8 no-print-space h-full flex flex-col" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
       {/* Header and Controls */}
       <div className="flex flex-col md:flex-row justify-between items-center no-print gap-4 shrink-0">
-        <div><h1 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">Academic Score Card</h1><p className="text-slate-500 dark:text-slate-400">Generate, customize, and print student reports</p></div>
+        <div><h1 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">Academic Score Card</h1><p className="text-slate-500 dark:text-slate-400 text-sm">Generate, customize, and print student reports</p></div>
         <div className="flex bg-white dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
             <button onClick={() => setActiveTab('single')} className={clsx("px-4 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'single' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800")}>Single</button>
             <button onClick={() => setActiveTab('bulk')} className={clsx("px-4 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2", activeTab === 'bulk' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800")}>Bulk</button>
@@ -787,12 +797,16 @@ export const ScoreCard: React.FC = () => {
       <div className="flex flex-wrap justify-between items-center no-print bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm gap-4 shrink-0">
           <div className="flex items-center gap-4 flex-wrap">
                <select className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)}>
+                    <option value="">Filter by Class...</option>
                     {classes.map(c => <option key={c.id} value={c.id}>{c.className} - {c.section}</option>)}
                </select>
                {activeTab === 'single' && (
                    <select className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)}>
                         <option value="">Select Student...</option>
-                        {students.map(s => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+                        {students.filter(s => {
+                            const cls = classes.find(c => c.id === selectedClassId);
+                            return !cls || (s.className === cls.className && s.section === cls.section);
+                        }).map(s => <option key={s.id} value={s.id}>{s.fullName}</option>)}
                    </select>
                )}
           </div>
@@ -835,7 +849,7 @@ export const ScoreCard: React.FC = () => {
                                          </div>
                                      )}
                                      <div className="w-full h-full pointer-events-none overflow-hidden">
-                                         <BlockRenderer block={block} schoolInfo={schoolInfo} student={dummyStudent} marks={[]} nonAcademic={null} exams={exams} subjects={subjects} helpers={helpers} overallStats={overallStats} />
+                                         <BlockRenderer block={block} schoolInfo={schoolInfo} student={dummyStudent} marks={[]} nonAcademic={null} exams={exams} subjects={subjects} helpers={helpers} overallStats={{totalPct: '0.0', overallGrade: 'A+'}} />
                                      </div>
                                      {selectedBlockId === block.id && (
                                          <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-white border-2 border-blue-500 rounded-full cursor-nwse-resize z-50 shadow-sm" onMouseDown={(e) => handleResizeStart(e, block.id)}></div>
@@ -1093,7 +1107,10 @@ export const ScoreCard: React.FC = () => {
                         <div className="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 no-print max-w-5xl shadow-sm">
                             <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-slate-800 dark:text-white text-lg">Select Students</h3><button onClick={toggleSelectAll} className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors">Toggle All</button></div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {students.map(s => (
+                                {students.filter(s => {
+                                    const cls = classes.find(c => c.id === selectedClassId);
+                                    return !cls || (s.className === cls.className && s.section === cls.section);
+                                }).map(s => (
                                     <div key={s.id} onClick={() => { const n = new Set(bulkSelection); if(n.has(s.id)) n.delete(s.id); else n.add(s.id); setBulkSelection(n); }} className={clsx("p-4 border rounded-xl cursor-pointer flex items-center gap-3 transition-all", bulkSelection.has(s.id) ? "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500 shadow-sm" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm")}>
                                         {bulkSelection.has(s.id) ? <CheckSquare className="text-indigo-600 dark:text-indigo-400" /> : <Square className="text-slate-300 dark:text-slate-600"/>} <span className="text-slate-800 dark:text-white font-bold text-sm">{s.fullName}</span>
                                     </div>
@@ -1101,7 +1118,13 @@ export const ScoreCard: React.FC = () => {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-8 w-full">
+                        <div className="flex flex-col items-center gap-8 w-full relative">
+                            {loadingBulk && (
+                                <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center min-h-[400px]">
+                                    <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
+                                    <p className="text-sm font-black text-indigo-600 uppercase tracking-widest">Generating Batch Reports...</p>
+                                </div>
+                            )}
                             {students.filter(s => bulkSelection.has(s.id)).map(s => (
                                 <CustomizableScoreCard 
                                     key={s.id} student={s} 

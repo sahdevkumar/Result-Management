@@ -17,6 +17,7 @@ import { RolePermission } from './pages/RolePermission';
 import { UserManagement } from './pages/UserManagement';
 import { AdminConfig } from './pages/AdminConfig';
 import { AIChat } from './pages/AIChat';
+import { RecycleBin } from './pages/RecycleBin';
 import { Login } from './pages/Login';
 import { Menu, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { DataService } from './services/dataService';
@@ -164,6 +165,7 @@ const App: React.FC = () => {
                   <Route path="users" element={<UserManagement />} />
                   <Route path="admin-config" element={<AdminConfig />} />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="recycle-bin" element={<RecycleBin />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
               </Routes>
