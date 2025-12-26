@@ -282,7 +282,7 @@ const BlockRenderer: React.FC<{
         case 'non_academic':
             return (
                 <div className={clsx("w-full h-full font-sans overflow-hidden bg-white flex flex-col", block.style.border && "rounded-lg")} style={{ border: borderStyle, backgroundColor: bgStyle }}>
-                     <div className="bg-[#f1f5f9] text-[#1e1b4b] p-1.5 text-center text-[10px] font-black uppercase tracking-widest border-b shrink-0" style={{ borderColor: block.style.borderColor || '#e2e8f0' }}>Non-Academic Performance & Traits</div>
+                     <div className="bg-[#f1f5f9] text-[#1e1b4b] p-1.5 text-center text-[10px] font-black uppercase tracking-widest border-b shrink-0" style={{ borderColor: block.style.borderColor || '#e2e8f0' }}>Non-Academic Performance</div>
                      <div className="grid grid-cols-4 flex-1 divide-x" style={{ borderColor: block.style.borderColor || '#e2e8f0' }}>
                         {['Attendance', 'Discipline', 'Communication', 'Participation'].map((trait, idx) => {
                             const val = trait === 'Attendance' ? nonAcademic?.attendance : trait === 'Discipline' ? nonAcademic?.discipline : trait === 'Communication' ? nonAcademic?.communication : nonAcademic?.participation;
@@ -333,7 +333,7 @@ const BlockRenderer: React.FC<{
         case 'signatures':
             return (
                 <div className="w-full h-full flex justify-between items-end px-4" style={{ fontSize: `${block.style.fontSize}px`, color: block.style.color }}>
-                    <div className="text-center pb-1"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black opacity-50 uppercase text-[8px] tracking-widest">Guardian's Sign</p></div>
+                    <div className="text-center pb-1"><div className="w-32 border-b border-slate-400 mb-1 mx-auto"></div><p className="font-black opacity-50 uppercase text-[8px] tracking-widest">Parent's</p></div>
                     <div className="text-center relative">
                         {schoolInfo.signature && (
                             <img src={schoolInfo.signature} className="absolute -top-12 left-1/2 -translate-x-1/2 h-16 w-32 object-contain mix-blend-multiply dark:mix-blend-normal pointer-events-none" alt="Head Signature" />
@@ -750,7 +750,7 @@ export const ScoreCard: React.FC = () => {
   const handleDragStart = (e: React.MouseEvent, id: string) => {
       e.stopPropagation(); if(activeTab !== 'layout') return; isDragging.current = true; setSelectedBlockId(id);
       const block = layout.find(b => b.id === id);
-      if(block) { dragStart.current = { x: e.clientX, y: e.clientY }; blockStart.current = { x: block.x, y: block.y }; }
+      if(block) { dragStart.current = { x: e.clientX, y: e.clientY }; blockStart.current = { x: block.y, y: block.y }; }
   };
 
   const handleResizeStart = (e: React.MouseEvent, id: string) => {
