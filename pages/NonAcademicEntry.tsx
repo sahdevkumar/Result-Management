@@ -1,5 +1,3 @@
-
-// ... existing imports ...
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
 import { Exam, Student, SchoolClass, NonAcademicRecord } from '../types';
@@ -8,7 +6,6 @@ import { useToast } from '../components/ToastContext';
 import clsx from 'clsx';
 
 export const NonAcademicEntry: React.FC = () => {
-  // ... existing state and logic ...
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   
@@ -22,6 +19,7 @@ export const NonAcademicEntry: React.FC = () => {
   const { showToast } = useToast();
 
   const gradeOptions = ['A', 'B', 'C', 'D', 'E'];
+  const attendanceOptions = ['A', 'B', 'C', 'D'];
 
   useEffect(() => {
     const init = async () => {
@@ -53,7 +51,7 @@ export const NonAcademicEntry: React.FC = () => {
   const createEmptyRecord = (studentId: string): NonAcademicRecord => ({
       studentId,
       examId: selectedExamId,
-      attendance: '',
+      attendance: 'A',
       discipline: 'A',
       communication: 'A',
       participation: 'A'
@@ -214,11 +212,11 @@ export const NonAcademicEntry: React.FC = () => {
                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tighter">
                     <Zap size={14} className="text-amber-500" /> Quick Fill Grades:
                  </div>
-                 {['discipline', 'communication', 'participation'].map(field => (
+                 {['attendance', 'discipline', 'communication', 'participation'].map(field => (
                      <div key={field} className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg p-1 pr-2 shadow-sm">
                          <span className="px-2 font-bold text-slate-400 uppercase border-r border-slate-100 dark:border-slate-700 mr-1">{field === 'participation' ? 'Class Part.' : field}</span>
                          <div className="flex gap-1">
-                            {['A', 'B', 'C'].map(g => (
+                            {(field === 'attendance' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C']).map(g => (
                                 <button 
                                     key={g} 
                                     onClick={() => quickFillGrades(field as any, g)}
@@ -276,15 +274,23 @@ export const NonAcademicEntry: React.FC = () => {
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-4 py-4">
+                                <td className="px-4 py-4 text-center">
                                     <div className="flex justify-center">
-                                        <input 
-                                            type="text" 
-                                            className="w-28 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl text-center font-bold text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
-                                            value={record.attendance}
-                                            onChange={(e) => handleFieldUpdate(student.id, 'attendance', e.target.value)}
-                                            placeholder="Ex: 180/200"
-                                        />
+                                        <div className="relative group/select">
+                                            <select 
+                                                className={clsx(
+                                                    "w-16 p-2.5 rounded-xl border font-black text-sm outline-none transition-all appearance-none text-center cursor-pointer ring-inset focus:ring-4",
+                                                    getGradeStyles(record.attendance)
+                                                )}
+                                                value={record.attendance}
+                                                onChange={(e) => handleFieldUpdate(student.id, 'attendance', e.target.value)}
+                                            >
+                                                {attendanceOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                                            </select>
+                                            <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                                                <ChevronDown size={10} />
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                                 {['discipline', 'communication', 'participation'].map((field) => (
