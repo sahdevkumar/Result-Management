@@ -16,10 +16,11 @@ export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
-  role: 'Super Admin' | 'Principal' | 'Admin' | 'Teacher' | 'Office Staff';
+  role: 'Super Admin' | 'Principal' | 'Admin' | 'Teacher' | 'Office Staff' | 'Student';
   status: 'Active' | 'Locked';
   assignedSubjectId?: string;
   assignedClassId?: string;
+  studentId?: string; // Links to the student table if role is 'Student'
 }
 
 export interface Student {

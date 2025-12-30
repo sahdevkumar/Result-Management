@@ -5,7 +5,8 @@ import {
   LayoutDashboard, Users, FileText, BarChart3, Settings, LogOut, 
   PenTool, X, Wifi, WifiOff, Palette, Printer, CreditCard, 
   MessageSquareQuote, GraduationCap, Activity, ShieldCheck, UserCircle, UserCog,
-  Sun, Moon, Monitor, ChevronUp, ChevronDown, Sparkles, Building2, Trash2
+  Sun, Moon, Monitor, ChevronUp, ChevronDown, Sparkles, Building2, Trash2,
+  ClipboardCheck
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { useTheme } from './ThemeContext';
@@ -27,6 +28,7 @@ const PATH_TO_ID: Record<string, string> = {
   '/': 'nav_dashboard',
   '/students': 'nav_students',
   '/exams': 'nav_exams',
+  '/result-management': 'nav_result_management',
   '/marks': 'entry_marks',
   '/remarks': 'entry_remarks',
   '/non-academic': 'entry_non_academic',
@@ -45,7 +47,6 @@ const PATH_TO_ID: Record<string, string> = {
 export const canAccessPath = (path: string, role: string, matrix: Record<string, string[]> | null): boolean => {
   if (role === 'Super Admin') return true;
   
-  // If we have a dynamic matrix from DB, use it
   if (matrix && matrix[role]) {
     const permId = PATH_TO_ID[path];
     if (permId) {
@@ -53,9 +54,8 @@ export const canAccessPath = (path: string, role: string, matrix: Record<string,
     }
   }
 
-  // Fallback to original hardcoded logic if no matrix is present or path not mapped
   if (role === 'Principal') return true;
-  const commonPaths = ['/', '/students', '/reports', '/scorecard', '/chat'];
+  const commonPaths = ['/', '/students', '/reports', '/scorecard', '/chat', '/result-management'];
   switch (role) {
     case 'Admin': return path !== '/roles';
     case 'Teacher': return [...commonPaths, '/marks', '/remarks', '/non-academic'].includes(path);
@@ -76,6 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isOnline, onL
     { icon: Sparkles, label: 'AI Help Desk', path: '/chat' },
     { icon: Users, label: 'Students', path: '/students' },
     { icon: FileText, label: 'Exams', path: '/exams' },
+    { icon: ClipboardCheck, label: 'Result Management', path: '/result-management' },
     { icon: PenTool, label: 'Marks Entry', path: '/marks' },
     { icon: MessageSquareQuote, label: "Teacher's Remark", path: '/remarks' },
     { icon: Activity, label: 'Non Academic', path: '/non-academic' },

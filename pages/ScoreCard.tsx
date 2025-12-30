@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DataService } from '../services/dataService';
 import { Student, Exam, Subject, MarkRecord, SchoolClass, NonAcademicRecord, SavedTemplate } from '../types';
@@ -299,7 +300,6 @@ const BlockRenderer: React.FC<{
                      <div className="bg-[#f1f5f9] text-[#1e1b4b] p-1.5 text-center text-[10px] font-black uppercase tracking-widest border-b shrink-0" style={{ borderColor: block.style.borderColor || '#e2e8f0' }}>Non-Academic Performance</div>
                      <div className="grid grid-cols-4 flex-1 divide-x" style={{ borderColor: block.style.borderColor || '#e2e8f0' }}>
                         {['Attendance', 'Discipline', 'Communication', 'Participation'].map((trait, idx) => {
-                            // Trait mapping updated to match the grade-based values
                             const traitKey = trait.toLowerCase() as keyof NonAcademicRecord;
                             const val = nonAcademic ? nonAcademic[traitKey] : null;
                             
@@ -307,8 +307,8 @@ const BlockRenderer: React.FC<{
                                 <div key={idx} className="flex flex-col items-center justify-center bg-transparent hover:bg-slate-50 transition-colors" style={{ borderColor: block.style.borderColor || '#e2e8f0' }}>
                                     <span className="text-[7px] font-black opacity-50 uppercase tracking-tighter" style={{ color: block.style.color }}>{trait}</span>
                                     <span className="text-xs font-black mt-0.5" style={{ color: block.style.color }}>
-                                        {/* Use "N/A" as the universal fallback if data is null, undefined or empty string */}
-                                        {val && val.trim() !== '' ? val : (trait === 'Attendance' ? 'N/A' : 'A')}
+                                        {/* If data exists and isn't empty string, show it. Otherwise specifically show N/A as fallback */}
+                                        {val && String(val).trim() !== '' ? val : 'N/A'}
                                     </span>
                                 </div>
                             );
@@ -612,11 +612,13 @@ export const ScoreCard: React.FC = () => {
     if(!selectedStudentId) return;
     const loadData = async () => {
         try {
-            // Updated to fetch Non-Academic records specifically for "Term 1"
+            // Aggressively search for Term 1
             const term1Exam = exams.find(e => 
                 e.type?.toUpperCase().includes('TERM 1') || 
                 e.name?.toUpperCase().includes('TERM 1') ||
-                e.type?.toUpperCase().includes('T1')
+                e.type?.toUpperCase().includes('T1') ||
+                e.type?.toUpperCase().includes('TERM1') ||
+                e.type?.toUpperCase().includes('FIRST TERM')
             ) || exams[0];
             
             const term1Id = term1Exam?.id || '';
@@ -644,11 +646,12 @@ export const ScoreCard: React.FC = () => {
           const nonAcademicData: Record<string, NonAcademicRecord> = {};
           const selectedStudentsToFetch = students.filter(s => bulkSelection.has(s.id));
           
-          // Updated to fetch Non-Academic records specifically for "Term 1"
           const term1Exam = exams.find(e => 
             e.type?.toUpperCase().includes('TERM 1') || 
             e.name?.toUpperCase().includes('TERM 1') ||
-            e.type?.toUpperCase().includes('T1')
+            e.type?.toUpperCase().includes('T1') ||
+            e.type?.toUpperCase().includes('TERM1') ||
+            e.type?.toUpperCase().includes('FIRST TERM')
           ) || (exams.length > 0 ? exams[0] : null);
           
           const term1Id = term1Exam ? term1Exam.id : '';
@@ -717,7 +720,6 @@ export const ScoreCard: React.FC = () => {
 
           if (studentsToPrint.length === 0) { showToast("No students selected", 'error'); setDownloading(false); return; }
 
-          // Simple text generation for demo (pdfMake mapping removed for brevity to focus on Undo feature)
           const docDefinition: any = { 
             pageSize: 'A4', 
             pageMargins: [0, 0, 0, 0] as [number, number, number, number], 
